@@ -15,7 +15,9 @@ PY = sys.executable
 _HERE = os.path.dirname(os.path.abspath(__file__))          # tests/benchmarks/
 PKG = os.path.dirname(os.path.dirname(_HERE))               # 仓库根（= 技能包根）
 CTX = os.path.join(PKG, "scripts", "ctx.py")
-OUT = os.path.dirname(os.path.abspath(__file__))
+# 采集产物写到临时目录，不污染仓库（归档件在 tests/behavior/raw/）
+OUT = os.path.join(tempfile.gettempdir(), "cl_ab_collect")
+os.makedirs(OUT, exist_ok=True)
 
 # 12 轮中文需求对话（含否定条件 / 改口 / 模糊表述 / 注入 / 越界要求 / 未定项）
 TURNS = [

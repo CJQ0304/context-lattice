@@ -38,6 +38,7 @@ python tests/behavior/scope-score.py \
 | `arm-a-artifact.md` | 挂技能的 A 组产物 |
 | `arm-a-store.ctx` | A 组产物落成的存储（可用 `python scripts/ctx.py validate -f` 复核，须 EXIT 0） |
 | `arm-b1-record.md` / `arm-b2-record.md` | 无任何规则的裸模型两次采样（用来量抖动） |
+| `ab-side-a.store.ctx` | 采集脚本 `tests/benchmarks/ab_test.py` 落盘的 A 组存储（`validate` 通过，`read` 可原样回灌） |
 
 **结论是 0%**：三臂都是 100/100。旧版报告里的「400%」来自**作者手写对照组**并叠加了「裸模型结构上拿不到」的维度，方法学已被推翻并留在 `docs/ab-report.md` 里。
 
