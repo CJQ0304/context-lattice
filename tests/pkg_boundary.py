@@ -54,3 +54,21 @@ def package_files(root):
             full = os.path.join(dirpath, fn)
             out.append((os.path.relpath(full, root).replace(os.sep, "/"), full))
     return sorted(out)
+
+
+# 「语料」的文本扩展名。**刻意与 `scripts/ctx.py` 的 `_PLAN_TEXT_EXT` 保持一致** ——
+# 因为门控 `plan` 自己就是按这张表收集语料的：两边若不同，同一份包会算出两个 T。
+# （真实教训：`rw-cost` 曾把无边界的 `LICENSE` 也计入分母，于是它自己的输出里
+#  「语料全量 86,489」与同一屏下 `plan` 报的「全量 T 86,259」对不上 —— 一个脚本、
+#  两个分母。`LICENSE` 是无扩展名的法律样板，`plan` 不把它算作可读素材。）
+CORPUS_TEXT_EXT = (".md", ".py", ".json", ".ctx", ".txt", ".yaml", ".yml",
+                   ".js", ".ts", ".html", ".css", ".go", ".rs", ".java", ".c", ".h")
+
+
+def corpus_files(root):
+    """交付包里**会被算进语料 T** 的文本文件：[(相对路径, 绝对路径), ...]。
+
+    这是全项目语料分母的唯一真相：三个测量脚本都从这里取，不许再各写一份。
+    """
+    return [(rel, full) for rel, full in package_files(root)
+            if rel.endswith(CORPUS_TEXT_EXT)]

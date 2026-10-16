@@ -6,7 +6,7 @@ description: "长会话上下文压缩与记忆管理：把用户每轮说的内
 description_zh: "把长会话按「事物—目的—要求」两级键压缩成结构化存储，并按用户级／工作区级／任务级三层作用域分区；回顾时按需读取相关分支而不回翻原始对话；压不动的整块素材登记为事件节点（只存摘要、来源指针、字节数与内容哈希，原文不进窗口、按需取回并校验）；支持跨库索引定位、生命周期老化升格、结构校验、压缩统计与跨会话续接。"
 description_en: "Compress a long conversation into a structured two-level-key store (topic → purpose → requirement) partitioned by three scopes (user / project / task) so later recall reads only the relevant branch instead of re-scanning the raw transcript. Incompressible chunks (code to edit, data to verify) can be registered as event nodes that keep only a summary, source pointer, byte count and content hash in the store — the raw text never enters the window and is fetched on demand and verified. Also supports cross-store indexing and lookup, lifecycle aging and promotion, validation, size reporting, and cross-session persistence. Use for context compression, running out of context, session memory, long-term memory, or reviewing what was discussed earlier."
 version: 1.2.1
-author: AI_工具开发者
+author: CJQ0304
 category: coding
 allowed-tools: Read, Write, Edit, Bash, Glob
 agent_created: true

@@ -3,7 +3,7 @@
 **零第三方依赖**，只用 Python 标准库。全部命令从**仓库根**运行。
 
 ```bash
-python tests/test_all.py                  # 主入口：14 套件 / 613 断言
+python tests/test_all.py                  # 主入口：14 套件 / 615 断言
 python tests/smoke.py                     # 冒烟：各类视图与错误路径逐条打印
 python tests/convergence_matrix.py --spec tests/convergence_spec.json --audit scripts/ctx.py
 python tests/pack_and_verify.py           # 需 PyYAML；打包 + 平台视角模拟解析
@@ -27,7 +27,7 @@ python tests/pack_and_verify.py           # 需 PyYAML；打包 + 平台视角�
 
 | # | 套件 | 断言 |
 |---|---|---:|
-| 1 | H2 契约对齐 | 30 |
+| 1 | H2 契约对齐（含验收器自检） | 32 |
 | 2 | 正向功能 | 27 |
 | 3 | 负向夹具（每类坏法必红） | 244 |
 | 4 | 收敛矩阵（无未分类 / 无孤儿格 / 无重叠） | 8 |
@@ -42,20 +42,22 @@ python tests/pack_and_verify.py           # 需 PyYAML；打包 + 平台视角�
 | 13 | 事件节点与门控 | 84 |
 | 14 | 交付包自洽（无悬空引用） | 4 |
 
-## 三条方法论，比套件本身更重要
+## 四条方法论，比套件本身更重要
 
 1. **负向夹具必须每类坏法各配一条**，而且要问一句「这段判定代码这次真的执行了吗」。本项目靠这条累计抓到 20+ 处真缺陷。
 2. **裁判（评分器 / 验收器）自己也要配负向夹具并进自动回归**（套件 12）。否则会得到「验收器永远说 PASS」的假证据。
 3. **套件名 ≠ 实际覆盖范围。** 本项目「视图回灌」套件曾经只测单参数视图、漏掉组合视图，让一个缺陷逃逸了三个版本。每次扩功能后问一句「这个套件测的是我以为的那个全集吗」。
+4. **报告里的数字要能追溯到一个来源，不许手抄。** 两处真实教训：① `STATS["suites"]` 曾由 `@suite` 装饰器登记、而 `main()` 另列一份清单 → 第 14 套件漏登记，摘要报「套件 13」而明细 14 行；② 质检报告的套件表逐行手抄过一次，结果**表内合计 538、正文却写 615**。数字**能算就不要写**，写下来的每处要能被机器复核。
 
 ## 负向注入（`injection/`）
 
-把判定代码故意弄坏，验证对应断言会红。**全绿不等于断言有效**，这三条是「断言不是假证据」的证明：
+把判定代码故意弄坏，验证对应断言会红。**全绿不等于断言有效**，这四条是「断言不是假证据」的证明：
 
 ```bash
-python tests/injection/inject-drift.py    # 短路 STALE-SRC 分支      → 期望 1/1 命中
-python tests/injection/inject-kind.py     # 退回「非 E 即 R」写法     → 期望 4/4 命中
-python tests/injection/inject-refs.py     # 插入一条假引用            → 期望 2/2 命中
+python tests/injection/inject-drift.py           # 短路 STALE-SRC 分支   → 期望 1/1 命中
+python tests/injection/inject-kind.py            # 退回「非 E 即 R」写法  → 期望 4/4 命中
+python tests/injection/inject-refs.py            # 插入一条假引用         → 期望 2/2 命中
+python tests/injection/inject-suite-registry.py  # 塞孤儿套件 + 套件重号   → 期望 2/2 命中
 ```
 
 退出码 `0` = 注入被捕获（断言有效）；`1` = 断言是假证据。

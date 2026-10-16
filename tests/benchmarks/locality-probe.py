@@ -19,20 +19,17 @@ def tk(s):
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # 仓库根
 PKG = ROOT
 sys.path.insert(0, os.path.join(ROOT, "tests"))
-from pkg_boundary import package_files                      # noqa: E402
-
-TEXT_EXT = (".md", ".py", ".json", ".ctx", ".txt", ".yaml", ".yml")
-
+from pkg_boundary import corpus_files                   # noqa: E402
 
 def collect(base):
-    """语料 = **交付包边界内**的文本文件（不含 tests/ docs/）。
+    """语料 = **交付包边界内**、且算进 T 的文本文件（不含 tests/ docs/ 与 LICENSE）。
 
-    用同一边界是为了让「全量」这个分母稳定：仓库里加开发件不该改变已发布的实测数据。
+    用同一边界、同一张扩展名表是为了让「全量」这个分母稳定：仓库里加开发件
+    不该改变已发布的实测数据，而**同一份包也不该算出两个 T**。
+    口径定义在 `pkg_boundary.corpus_files`（唯一真相，三个测量脚本共用）。
     """
     out = []
-    for rel, p in package_files(base):
-        if not rel.endswith(TEXT_EXT):
-            continue
+    for rel, p in corpus_files(base):
         try:
             t = open(p, encoding="utf-8", errors="replace").read()
         except Exception:

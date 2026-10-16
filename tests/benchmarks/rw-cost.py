@@ -16,7 +16,7 @@ import tiktoken
 
 HERE = os.path.dirname(os.path.abspath(__file__))           # tests/benchmarks/
 sys.path.insert(0, os.path.dirname(HERE))                   # tests/
-from pkg_boundary import package_files                      # noqa: E402
+from pkg_boundary import corpus_files                   # noqa: E402
 
 PKG = os.path.dirname(os.path.dirname(HERE))                # 仓库根（= 技能包根）
 CTX = os.path.join(PKG, "scripts", "ctx.py")
@@ -40,9 +40,12 @@ A_FULL = ["SKILL.md", "scripts/ctx.py", "references/store-format.md",
 # 臂 A 自报：部分读 README.md L140–L228
 A_PART = [("README.md", 140, 228)]
 
-# 臂 B 自报：全部文件（其中 LICENSE、lifecycle、host-memory-adapter、start-prompt
-# 标为「已列出/未逐行引用」，仍按读过计入 —— 这对 B 臂**有利**，宁可高估它）
-B_FULL = ["SKILL.md", "README.md", "CHANGELOG.md", "LICENSE",
+# 臂 B 自报：全部素材（其中 lifecycle、host-memory-adapter、start-prompt
+# 标为「已列出/未逐行引用」，仍按读过计入 —— 这对 B 臂**有利**，宁可高估它）。
+# **不含 `LICENSE`**：它是无扩展名的法律样板，`plan` 不把它算作可读素材，
+# 语料分母也就不该含它 —— 否则会出现「同一屏里语料全量 86,489、门控全量 86,259」
+# 这种一个脚本两个分母的错（实测踩过）。
+B_FULL = ["SKILL.md", "README.md", "CHANGELOG.md",
           "scripts/ctx.py", "references/store-format.md", "references/split-rules.md",
           "references/compression-strategy.md", "references/degradation.md",
           "references/coverage-matrix.md", "references/lifecycle.md",
@@ -63,20 +66,19 @@ def cost_b():
 
 
 def corpus_total():
-    """语料全量 T：**只算会随技能包分发的文本文件**（交付包边界）。
+    """语料全量 T：**交付包边界内、且 `plan` 会算进 T 的文本文件**。
 
-    口径经过两次修正，两次都是「分母算错」：
+    口径经过三次修正，三次都是「分母算错」：
       ① 第一版写成 endswith("")，恒真，把 .pyc 二进制也算进去 → 分母膨胀到 17 万。
       ② 仓库里新增 `tests/` `docs/` 之后，若仍按「整仓」计，同一份语料换一次
          目录布局就换一个 T，已发布的实测数据立刻不可复现 → 改为取交付包边界
          （定义在 `tests/pkg_boundary.py`，与打包器共用同一份）。
+      ③ 又按扩展名自带了一套规则、并把无扩展名的 `LICENSE` 也计入 → 与同一屏下
+         `plan` 报的 T 差 230 token（一个脚本、两个分母）。现在统一走
+         `pkg_boundary.corpus_files`（唯一真相，三个测量脚本共用）。
     """
-    tot = 0
-    for rel, full in package_files(PKG):
-        if rel.endswith((".md", ".py", ".txt", ".ctx")) or os.path.basename(rel) == "LICENSE":
-            with open(full, encoding="utf-8", errors="replace") as fh:
-                tot += tk(fh.read())
-    return tot
+    return sum(tk(open(full, encoding="utf-8", errors="replace").read())
+               for _, full in corpus_files(PKG))
 
 
 def main():
@@ -96,7 +98,7 @@ def main():
     # 再交给它，否则「语料全量」这个分母会从交付包变成整仓，与上面的数字对不上。
     corpus = os.path.join(tempfile.gettempdir(), "cl_rw_cost_corpus")
     shutil.rmtree(corpus, ignore_errors=True)
-    for rel, full in package_files(PKG):
+    for rel, full in corpus_files(PKG):
         dst = os.path.join(corpus, rel.replace("/", os.sep))
         os.makedirs(os.path.dirname(dst), exist_ok=True)
         shutil.copyfile(full, dst)
@@ -109,7 +111,7 @@ def main():
             print("   " + line.strip())
     print()
     print("注：本任务是「给格式加一种行类型」，天然要读遍格式规范与全部实现分派点 ——")
-    print("    工作集占全量 78%，落在断点（93%）以内，所以门控仍判 STORE；")
+    print("    工作集占全量的四分之三左右，落在断点以内，所以门控仍判 STORE；")
     print("    但净省只剩十几个百分点，已经贴近「建库不值」的边界。")
     print("    这道题因此属于技能的**不利区间**，拿它证明增益是不成立的。")
 

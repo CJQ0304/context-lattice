@@ -3,14 +3,14 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-3776ab.svg)](https://www.python.org/)
 [![Dependencies: none](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](#环境)
-[![Tests: 613 assertions](https://img.shields.io/badge/tests-613%20assertions-brightgreen.svg)](tests/)
+[![Tests: 615 assertions](https://img.shields.io/badge/tests-615%20assertions-brightgreen.svg)](tests/)
 [![Version](https://img.shields.io/badge/version-1.2.1-blue.svg)](CHANGELOG.md)
 
 > **把长会话压成一份结构化、可校验、可增量维护的存储**，让模型回顾时只读相关的那一支，而不是回翻大量原文。
 >
 > 它不是摘要工具，也不是窗口扩展器 —— 它是**给对话里的约定一个可反复读写、还能被程序校验的持久形态**（≈ 建台账，不是拍照片）。
 
-版本：`1.2.1` · 纯 Python 标准库 · 零第三方依赖 · MIT
+版本：`1.2.1` · 作者：CJQ0304 · 纯 Python 标准库 · 零第三方依赖 · MIT
 
 [**中文**](#中文) | [English](#english)
 
@@ -61,7 +61,7 @@
 需要 **Python 3.8+**，无需安装任何依赖。
 
 ```bash
-git clone <本仓库>
+git clone https://github.com/CJQ0304/context-lattice.git
 cd context-lattice
 
 # 0) 确认可用
@@ -106,18 +106,18 @@ python scripts/ctx.py plan --root src --work kernel.py,main.py
 
 ### 实测数据（含负值，可复现）
 
-**语料 = 本交付包自身**（14 个文件 / 80,535 token，机械量）。复现：`python tests/benchmarks/realworld-probe.py`
+**语料 = 本交付包自身**（14 个文件 / 86,276 token，机械量）。复现：`python tests/benchmarks/realworld-probe.py`
 
 | 任务 | 工作集（保守 / 乐观） | 净省（保守 / 乐观） |
 |---|---|---:|
-| 给 `ctx.py` 加一个子命令 | 35,536 / 14,994 | **54.7% / 80.2%** |
-| 改 `SKILL.md` 的 description | 7,584 / 1,587 | **89.4% / 96.9%** |
-| 新增一条拆分规则 | 3,992 / 1,204 | **93.9% / 97.3%** |
-| **反例**：任务要读完全部素材 | 80,535 = 100% | **−7.0%（反而更贵）** |
+| 给 `ctx.py` 加一个子命令 | 35,536 / 14,994 | **57.7% / 81.5%** |
+| 改 `SKILL.md` 的 description | 7,581 / 1,584 | **90.1% / 97.1%** |
+| 新增一条拆分规则 | 3,992 / 1,204 | **94.3% / 97.5%** |
+| **反例**：任务要读完全部素材 | 86,276 = 100% | **−6.7%（反而更贵）** |
 
 - **保守口径** = 任务涉及的文件整份读；**乐观口径** = 按结构边界（markdown 标题 / `def`）切片后只读命中段。
-- **门控**（`plan`，脚本算、不让模型估）：局部任务判 `STORE +48.9%`，反例判 `INLINE −7.0%`，库级断点 `1 − I/T = 93.0%`。
-- **事件节点**：14 个节点指向 **228,035 字节**原文，库内只占 **1,749 字符**（每 1 字符指向约 130 字节原文，原文一个字节都不进窗口）。
+- **门控**（`plan`，脚本算、不让模型估）：局部任务判 `STORE +52.1%`，反例判 `INLINE −6.7%`，库级断点 `1 − I/T = 93.3%`。
+- **事件节点**：14 个节点指向 **245,156 字节**原文，库内只占 **1,749 字符**（每 1 字符指向约 140 字节原文，原文一个字节都不进窗口）。
 - **体积无关性**：源文件正文翻倍（92,484 → 184,969 字节），视图 token 只从 82 变 84。
 
 > ⚠️ **绝对值绑定交付包版本** —— 语料就是本包自身，改一次文档 T 就变。引用时请连版本号一起引；相对量（净省百分比）才是稳定的那个。
@@ -263,7 +263,7 @@ context-lattice/
 ├── templates/                  空库骨架 / 增量示例 / 会话接入提示
 │
 │   ── 以下只在仓库里存在，不进技能安装包 ──
-├── tests/                      验收集：14 套件 / 613 断言 / 收敛矩阵 / 行为层裁判 / 基准探针 / 负向注入
+├── tests/                      验收集：14 套件 / 615 断言 / 收敛矩阵 / 行为层裁判 / 基准探针 / 负向注入
 └── docs/                       质检报告、真实场景测试报告、行为层报告、压测与 A/B 报告
 ```
 
@@ -276,15 +276,15 @@ context-lattice/
 | [`docs/QC-REPORT.md`](docs/QC-REPORT.md) | 质检报告：5 大铁律自评、套件明细、收敛关卡、**六轮对抗探测的缺陷账**、已知限制（19 条） |
 | [`docs/REPORT-realworld.md`](docs/REPORT-realworld.md) | 真实场景测试：真实语料上的层 A 机械测量 + 层 B 两个独立实例的对照 |
 | [`docs/REPORT-behavior.md`](docs/REPORT-behavior.md) | 行为层：A/B 对照与作用域探针，**含「这组数据没证明什么」的披露** |
-| [`tests/README.md`](tests/README.md) | 怎么跑验收集，以及三条比套件本身更重要的方法论 |
+| [`tests/README.md`](tests/README.md) | 怎么跑验收集，以及四条比套件本身更重要的方法论 |
 | [`tests/injection/`](tests/injection/) | 负向注入：把判定代码故意弄坏，确认断言真的会红 |
 
 几个数字（都可在本机复现）：
 
-- 验收集 **14 套件 / 613 断言 / 0 失败**，零第三方依赖；
+- 验收集 **14 套件 / 615 断言 / 0 失败**，零第三方依赖；
 - 收敛矩阵 **35 条规则 / 38 个覆盖格 / 61 个夹具 / 格均 1.00 / 漂移 0**；
 - 打包器做**五层平台视角模拟**（落盘 / 路径 / 编码 / 元数据 / 内容），并配 **6 个坏包**，必须全部被拦下；
-- 三处负向注入全部被断言捕获（1/1、4/4、2/2）。
+- 四处负向注入全部被断言捕获（1/1、4/4、2/2、2/2）。
 
 ### 安装为 AI 技能
 
@@ -320,7 +320,7 @@ cp -r context-lattice ~/.workbuddy/skills/
 
 ### 许可
 
-MIT，见 [LICENSE](LICENSE)。
+MIT，见 [LICENSE](LICENSE)。版权归 **CJQ0304 &lt;cjq0304@outlook.com&gt;** 所有。
 
 ---
 
@@ -330,7 +330,7 @@ MIT，见 [LICENSE](LICENSE)。
 >
 > It is **not** a summarizer and **not** a context-window extender. It gives the agreements inside a conversation a persistent form that can be read and written repeatedly **and checked by a program** — think *keeping a ledger*, not *taking a snapshot*.
 
-Version `1.2.1` · Pure Python standard library · **Zero dependencies** · MIT
+Version `1.2.1` · Author: CJQ0304 · Pure Python standard library · **Zero dependencies** · MIT
 
 ### The problem it solves
 
@@ -359,7 +359,7 @@ Three follow-up problems, each with a mechanism:
 **Python 3.8+**, no dependencies.
 
 ```bash
-git clone <this repo> && cd context-lattice
+git clone https://github.com/CJQ0304/context-lattice.git && cd context-lattice
 
 python scripts/ctx.py init -f .ctxstore/store.ctx --date 2026-10-15 \
   --top "Brand assignment" --stdin <<'EOF'
@@ -384,18 +384,18 @@ python scripts/ctx.py plan --root src --work kernel.py,main.py
 
 ### Measured results (including the negative one)
 
-**Corpus = this very package** (14 files / 80,535 tokens, a mechanical quantity). Reproduce with `python tests/benchmarks/realworld-probe.py`.
+**Corpus = this very package** (14 files / 86,276 tokens, a mechanical quantity). Reproduce with `python tests/benchmarks/realworld-probe.py`.
 
 | Task | Working set (conservative / optimistic) | Net saving (conservative / optimistic) |
 |---|---|---:|
-| Add a subcommand to `ctx.py` | 35,536 / 14,994 | **54.7% / 80.2%** |
-| Rewrite the `SKILL.md` description | 7,584 / 1,587 | **89.4% / 96.9%** |
-| Write a new splitting rule | 3,992 / 1,204 | **93.9% / 97.3%** |
-| **Counter-example**: task needs everything | 80,535 = 100% | **−7.0% (more expensive)** |
+| Add a subcommand to `ctx.py` | 35,536 / 14,994 | **57.7% / 81.5%** |
+| Rewrite the `SKILL.md` description | 7,581 / 1,584 | **90.1% / 97.1%** |
+| Write a new splitting rule | 3,992 / 1,204 | **94.3% / 97.5%** |
+| **Counter-example**: task needs everything | 86,276 = 100% | **−6.7% (more expensive)** |
 
 - **Conservative** = read the involved files whole; **optimistic** = slice at structural boundaries and read only matching sections.
-- **Gate** (`plan`, computed by the script — never estimated by the model): local task → `STORE +48.9%`; counter-example → `INLINE −7.0%`; store-level break-even `1 − I/T = 93.0%`.
-- **Event nodes**: 14 nodes point at **228,035 bytes** of raw text while occupying **1,749 characters** in the store.
+- **Gate** (`plan`, computed by the script — never estimated by the model): local task → `STORE +52.1%`; counter-example → `INLINE −6.7%`; store-level break-even `1 − I/T = 93.3%`.
+- **Event nodes**: 14 nodes point at **245,156 bytes** of raw text while occupying **1,749 characters** in the store.
 - **Volume invariance**: doubling the raw text (92,484 → 184,969 bytes) moved the view from 82 to 84 tokens.
 
 > ⚠️ **Absolute values are tied to the package revision** — the corpus *is* this package, so editing a doc changes T. Quote the version alongside any number; the ratios are the stable part.
@@ -433,7 +433,7 @@ The runtime package (`SKILL.md`, `references/`, `scripts/`, `templates/`) ships 
 
 This repository publishes the **verification process**, not just the result:
 
-- `tests/` — 14 suites / **613 assertions** / 0 failures, zero third-party dependencies; a convergence matrix (35 rules / 38 cells / 61 fixtures); behavior-layer scorers with their own positive/negative fixtures; benchmark probes; and **negative-injection** scripts that deliberately break the decision code to prove the assertions actually fire.
+- `tests/` — 14 suites / **615 assertions** / 0 failures, zero third-party dependencies; a convergence matrix (35 rules / 38 cells / 61 fixtures); behavior-layer scorers with their own positive/negative fixtures; benchmark probes; and **negative-injection** scripts that deliberately break the decision code to prove the assertions actually fire.
 - `docs/QC-REPORT.md` — quality report including a **defect ledger across six adversarial rounds** and 19 documented limitations.
 - `docs/REPORT-realworld.md` — real-corpus measurements plus a two-arm behavioral comparison, **including the case where the skill showed no attributable gain**.
 - `docs/REPORT-behavior.md` — A/B and scope probes, with an explicit disclosure of **what the data does not prove**.
@@ -444,4 +444,4 @@ See `docs/QC-REPORT.md` §10. Highlights: `read` is strictly read-only, scope mi
 
 ### License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE). Copyright (c) 2026 **CJQ0304 &lt;cjq0304@outlook.com&gt;**.

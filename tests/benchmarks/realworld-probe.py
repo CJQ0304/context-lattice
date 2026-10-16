@@ -17,6 +17,7 @@
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -28,7 +29,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))           # tests/benchmarks/
 WS = os.path.dirname(HERE)                                  # tests/
 PKG = os.path.dirname(WS)                                   # 仓库根（= 技能包根）
 sys.path.insert(0, WS)
-from pkg_boundary import package_files                      # noqa: E402
+from pkg_boundary import corpus_files                   # noqa: E402
 
 CTX = os.path.join(PKG, "scripts", "ctx.py")
 TMP = os.path.join(tempfile.gettempdir(), "cl_rw_probe")
@@ -54,11 +55,11 @@ def sh(*args, stdin=None):
 # 真实语料：交付包的实际文件
 # --------------------------------------------------------------------------
 
-# 语料 = **交付包边界内**的文本文件（不含 tests/ docs/ LICENSE）。
+# 语料 = **交付包边界内**、且按 `plan` 同一张扩展名表能算进 T 的文本文件。
 # 这里不再手抄一份文件名清单 —— 手抄的那份迟早和实际包漂移，
-# 而分母漂移会让已发布的实测数据悄悄失效。边界由 pkg_boundary 定义（唯一真相）。
-FILES = [rel for rel, _ in package_files(PKG)
-         if rel != "LICENSE" and rel.endswith((".md", ".py", ".txt", ".ctx"))]
+# 而分母漂移会让已发布的实测数据悄悄失效。口径由 `pkg_boundary.corpus_files`
+# 定义（唯一真相，三个测量脚本共用）。
+FILES = [rel for rel, _ in corpus_files(PKG)]
 
 # 按真实职责分组（模拟模型读完后的压存：读过的块就压存）
 GROUPS = [
@@ -268,13 +269,26 @@ def main():
     print("（语料已摊平到临时目录，共 %d 个文件，与第二节同一分母）" % len(FILES))
     cons_all = ",".join(TASKS[0][1])
     print("--- 局部任务（T1 工作集）---")
-    print(sh("plan", "--root", corpus, "--work", cons_all).rstrip())
+    plan_local = sh("plan", "--root", corpus, "--work", cons_all)
+    print(plan_local.rstrip())
     print()
     print("--- 反例：任务要读完全部素材 ---")
     print(sh("plan", "--root", corpus, "--work", ",".join(FILES)).rstrip())
     print()
     print("注：plan **没有** --reuse 参数 —— 新口径下不需要预估复用次数 k，")
     print("    规则退化为「读过的块就压存」，参数直接消失了。")
+
+    # 导航层 token（plan 的 I）**从实际输出解析**，不许手抄。
+    # 旧版这里是硬编码的一个常数，而同一次运行里 plan 明明打印了另一个值 ——
+    # 机器可读摘要与人读输出自相矛盾，正是本项目反复处理的那一类错。
+    nav_tok = None
+    for line in plan_local.splitlines():
+        if "索引导航层" in line and ":" in line:
+            digits = re.findall(r"\d+", line.split(":")[-1].split("(")[0])
+            if digits:
+                nav_tok = int(digits[0])
+            break
+    print("导航层 I（从 plan 输出解析）= %s" % nav_tok)
 
     # —— 6. 事件节点全链路：索引只放摘要、取回字节一致 ——
     print()
@@ -342,9 +356,10 @@ def main():
         "event_nodes": len(FILES),
         "volume_invariance": ok,
         "volume_delta_token": delta,
-        "nav_layer_token_plan": 5054,
-        "nav_note": "index_token=库的索引层(49 节点，粗粒度)；plan 的 I=5054 是对语料目录"
-                    "现算的细粒度导航层(按每个结构单元)。索引做多细是取舍，不是定值。",
+        "nav_layer_token_plan": nav_tok,
+        "nav_note": "index_token=库的索引层(49 节点，粗粒度)；plan 的 I=%s 是对语料目录"
+                    "现算的细粒度导航层(按每个结构单元)。索引做多细是取舍，不是定值。"
+                    % nav_tok,
     }
     with open(os.path.join(TMP, "RESULT-realworld.json"), "w", encoding="utf-8") as fh:
         json.dump(summary, fh, ensure_ascii=False, indent=1)

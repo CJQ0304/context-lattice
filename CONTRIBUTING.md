@@ -13,7 +13,7 @@
   - `PyYAML` —— 打包器的 frontmatter 解析（`tests/pack_and_verify.py`）
 
 ```bash
-python tests/test_all.py      # 期望 14 套件 / 613 断言 / 0 失败 / EXIT 0
+python tests/test_all.py      # 期望 14 套件 / 615 断言 / 0 失败 / EXIT 0
 ```
 
 ## 目录分工
@@ -33,21 +33,22 @@ python tests/test_all.py      # 期望 14 套件 / 613 断言 / 0 失败 / EXIT 
 
 1. **绝不手写 `.ctx`。** 头部计数由脚本维护，手改必然被 `validate` 发现。事件节点的行**尤其**不能手写 —— 它带内容哈希，手写等于伪造指纹。
 2. **改格式就要同步加不变量。** `.ctx` 是自定义文本格式，没有 schema 兜底；「本地能落盘但下游会误解析」的唯一防线是 `references/store-format.md` 里的不变量表（当前 20 条）。新增能力还要补 `references/degradation.md` 的降级路径。
-3. **每类坏法配一条负向夹具，并问一句「这段判定代码这次真的执行了吗」。** 断言全绿可能只是因为它测的不是那段代码。`tests/injection/` 下有三个注入脚本，专门用来证明断言真的会红。
+3. **每类坏法配一条负向夹具，并问一句「这段判定代码这次真的执行了吗」。** 断言全绿可能只是因为它测的不是那段代码。`tests/injection/` 下有四个注入脚本，专门用来证明断言真的会红。
 4. **断言红了先怀疑断言。** 本项目的裁判误判累计 5 处，规律是：写断言时不自觉地朝「让自己想证明的结论成立」的方向写。判据要写正面条件，告警词要排除否定语境，改完配正负控。
 5. **不许为了让自己好看而挑场景。** 实测数据一律带上不利区间（工作集接近全量时净省为负），负值原样打印、不截断。行为层结论如果只是「和裸模型打平」，就写打平。
-6. **口径只有一处真相。** 交付包边界在 `pkg_boundary.py`；收敛夹具的唯一来源是 `tests/convergence_spec.json`；配置文件里的数字不许在文档里手抄第二遍。
+6. **口径只有一处真相。** 交付包边界在 `pkg_boundary.py`；收敛夹具的唯一来源是 `tests/convergence_spec.json`；配置文件里的数字不许在文档里手抄第二遍；**验收器自己的计数也必须从实际执行派生**（套件数 = `len(SUITES)`），不许由声明或手抄决定 —— 「报 13 而实为 14」这种错不会让任何断言变红，只会让引用它的文档一起错。
 7. **报错要指到真实原因。** 「工具自身调错」与「被测对象有问题」必须分开报 —— 报错指向错误比不报错更坑。
 
 ## 改完的提交前清单
 
 ```bash
-python tests/test_all.py                                   # 14 套件 / 613 断言 / 0 失败
+python tests/test_all.py                                   # 14 套件 / 615 断言 / 0 失败
 python tests/convergence_matrix.py --spec tests/convergence_spec.json --audit scripts/ctx.py
 python tests/pack_and_verify.py                            # 需 PyYAML
 python tests/injection/inject-drift.py                     # 1/1 命中
 python tests/injection/inject-kind.py                      # 4/4 命中
 python tests/injection/inject-refs.py                      # 2/2 命中
+python tests/injection/inject-suite-registry.py            # 2/2 命中（验收器自检）
 ```
 
 **改了会随包分发的文件（`SKILL.md` / `README.md` / `CHANGELOG.md` / `references/` / `scripts/` / `templates/`）就必须**：
