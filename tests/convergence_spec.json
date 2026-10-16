@@ -1,0 +1,686 @@
+{
+  "spec_version": 1,
+  "title": "context-lattice .ctx 结构校验器的收敛矩阵规格",
+  "target": "context-lattice/scripts/ctx.py",
+  "entry": [
+    "validate",
+    "--file",
+    "<fixture>"
+  ],
+  "expect_exit_on_bad": 1,
+  "dimensions": {
+    "row_type": [
+      "header",
+      "top",
+      "T",
+      "P",
+      "R",
+      "whole",
+      "E"
+    ],
+    "bad_kind": [
+      "missing",
+      "malformed",
+      "badver",
+      "blank-line",
+      "wrong-indent",
+      "wrong-level",
+      "duplicate",
+      "empty",
+      "too-long",
+      "ctrl-char",
+      "bad-encoding",
+      "bracket-conflict",
+      "tag-too-long",
+      "count-mismatch",
+      "empty-store",
+      "empty-file",
+      "bad-encoding-bytes",
+      "bom",
+      "bad-scope"
+    ]
+  },
+  "rules": [
+    {
+      "id": "R-HEAD-MISSING",
+      "covers": [
+        [
+          "header",
+          "missing"
+        ]
+      ],
+      "cases": [
+        {
+          "content": "T1 光秃秃没有头部\n",
+          "expect_contains": "不是合法的 .ctx 存储"
+        }
+      ]
+    },
+    {
+      "id": "R-HEAD-MALFORMED",
+      "covers": [
+        [
+          "header",
+          "malformed"
+        ]
+      ],
+      "cases": [
+        {
+          "content": "#CTX 1 | 2026-10-15 | T1 P0 R0\nT1 x\n",
+          "expect_contains": "头部格式非法"
+        },
+        {
+          "content": "#CTX 1 | 20261015 | rev0 | T1 P0 R0\nT1 x\n",
+          "expect_contains": "头部格式非法"
+        },
+        {
+          "content": "#CTX 1 | 2026-10-15 | rev 0 | T1 P0 R0 | scope:中文\nT1 x\n",
+          "expect_contains": "头部格式非法"
+        },
+        {
+          "content": "#CTX 1 | 2026-10-15 | rev 0 | T1 P0 R0 | scope:user | scope:proj\nT1 x\n",
+          "expect_contains": "头部格式非法"
+        },
+        {
+          "content": "#CTX 1 | 2026-10-15 | rev 0 | T1 P0 R0 | view:level2 | scope:user\nT1 x\n",
+          "expect_contains": "头部格式非法"
+        }
+      ]
+    },
+    {
+      "id": "R-VER",
+      "covers": [
+        [
+          "header",
+          "badver"
+        ]
+      ],
+      "cases": [
+        {
+          "content": "#CTX 2 | 2026-10-15 | rev 0 | T1 P0 R0\nT1 x\n",
+          "expect_contains": "版本"
+        },
+        {
+          "content": "#CTX 99 | 2026-10-15 | rev 0 | T1 P0 R0\nT1 x\n",
+          "expect_contains": "版本"
+        },
+        {
+          "content": "#CTX 0 | 2026-10-15 | rev 0 | T1 P0 R0\nT1 x\n",
+          "expect_contains": "版本"
+        }
+      ]
+    },
+    {
+      "id": "R-BLANK",
+      "covers": [
+        [
+          "whole",
+          "blank-line"
+        ]
+      ],
+      "cases": [
+        {
+          "content": "#CTX 1 | 2026-10-15 | rev 0 | T1 P0 R0\nT1 x\n\nT2 y\n",
+          "expect_contains": "空行"
+        }
+      ]
+    },
+    {
+      "id": "R-INDENT",
+      "covers": [
+        [
+          "T",
+          "wrong-indent"
+        ],
+        [
+          "P",
+          "wrong-indent"
+        ],
+        [
+          "R",
+          "wrong-indent"
+        ]
+      ],
+      "cases": [
+        {
+          "content": "#CTX 1 | 2026-10-15 | rev 0 | T1 P0 R0\n T1 x\n",
+          "expect_contains": "缩进错位"
+        },
+        {
+          "content": "#CTX 1 | 2026-10-15 | rev 0 | T1 P1 R0\nT1 x\n   P1.1 y\n",
+          "expect_contains": "缩进错位"
+        },
+        {
+          "content": "#CTX 1 | 2026-10-15 | rev 0 | T1 P1 R1\nT1 x\n  P1.1 y\n      R z\n",
+          "expect_contains": "缩进错位"
+        },
+        {
+          "content": "#CTX 1 | 2026-10-15 | rev 0 | T1 P1 R0\nT1 x\n P1.1 y\n",
+          "expect_contains": "缩进错位"
+        },
+        {
+          "content": "#CTX 1 | 2026-10-15 | rev 0 | T1 P1 R1\nT1 x\n  P1.1 y\n   R z\n",
+          "expect_contains": "缩进错位"
+        },
+        {
+          "content": "#CTX 1 | 2026-10-15 | rev 0 | T1 P1 R1\nT1 x\n  P1.1 y\n     R z\n",
+          "expect_contains": "缩进错位"
+        }
+      ]
+    },
+    {
+      "id": "R-P-SYNTAX",
+      "covers": [
+        [
+          "P",
+          "malformed"
+        ]
+      ],
+      "cases": [
+        {
+          "content": "#CTX 1 | 2026-10-15 | rev 0 | T1 P1 R0\nT1 x\n  P1 y\n",
+          "expect_contains": "必须是"
+        }
+      ]
+    },
+    {
+      "id": "R-R-SYNTAX",
+      "covers": [
+        [
+          "R",
+          "malformed"
+        ]
+      ],
+      "cases": [
+        {
+          "content": "#CTX 1 | 2026-10-15 | rev 0 | T1 P1 R1\nT1 x\n  P1.1 y\n    Q z\n",
+          "expect_contains": "必须是"
+        }
+      ]
+    },
+    {
+      "id": "R-LEVEL-P",
+      "covers": [
+        [
+          "P",
+          "wrong-level"
+        ]
+      ],
+      "cases": [
+        {
+          "content": "#CTX 1 | 2026-10-15 | rev 0 | T0 P1 R0\n  P1.1 y\n",
+          "expect_contains": "层级跳跃"
+        }
+      ]
+    },
+    {
+      "id": "R-LEVEL-R",
+      "covers": [
+        [
+          "R",
+          "wrong-level"
+        ]
+      ],
+      "cases": [
+        {
+          "content": "#CTX 1 | 2026-10-15 | rev 0 | T1 P0 R1\nT1 x\n    R z\n",
+          "expect_contains": "层级跳跃"
+        }
+      ]
+    },
+    {
+      "id": "R-DUP-T",
+      "covers": [
+        [
+          "T",
+          "duplicate"
+        ]
+      ],
+      "cases": [
+        {
+          "content": "#CTX 1 | 2026-10-15 | rev 0 | T1 P1 R1\nT1 x\nT1 y\n  P1.1 p\n    R r\n",
+          "expect_contains": "重复"
+        }
+      ]
+    },
+    {
+      "id": "R-DUP-P",
+      "covers": [
+        [
+          "P",
+          "duplicate"
+        ]
+      ],
+      "cases": [
+        {
+          "content": "#CTX 1 | 2026-10-15 | rev 0 | T1 P1 R1\nT1 x\n  P1.1 p\n  P1.1 q\n    R r\n",
+          "expect_contains": "重复"
+        }
+      ]
+    },
+    {
+      "id": "R-TOP-DUP",
+      "covers": [
+        [
+          "top",
+          "duplicate"
+        ]
+      ],
+      "cases": [
+        {
+          "content": "#CTX 1 | 2026-10-15 | rev 0 | T1 P0 R0\ntop: a\ntop: b\nT1 x\n",
+          "expect_contains": "重复出现"
+        }
+      ]
+    },
+    {
+      "id": "R-EMPTY-NAME-T",
+      "covers": [
+        [
+          "T",
+          "empty"
+        ]
+      ],
+      "cases": [
+        {
+          "content": "#CTX 1 | 2026-10-15 | rev 0 | T1 P0 R0\nT1 \n",
+          "expect_contains": "名称为空"
+        }
+      ]
+    },
+    {
+      "id": "R-EMPTY-NAME-P",
+      "covers": [
+        [
+          "P",
+          "empty"
+        ]
+      ],
+      "cases": [
+        {
+          "content": "#CTX 1 | 2026-10-15 | rev 0 | T1 P1 R0\nT1 x\n  P1.1 \n",
+          "expect_contains": "名称为空"
+        }
+      ]
+    },
+    {
+      "id": "R-EMPTY-NAME-R",
+      "covers": [
+        [
+          "R",
+          "empty"
+        ]
+      ],
+      "cases": [
+        {
+          "content": "#CTX 1 | 2026-10-15 | rev 0 | T1 P1 R1\nT1 x\n  P1.1 y\n    R \n",
+          "expect_contains": "必须是"
+        }
+      ]
+    },
+    {
+      "id": "R-LONG",
+      "covers": [
+        [
+          "T",
+          "too-long"
+        ]
+      ],
+      "cases": [
+        {
+          "content": "#CTX 1 | 2026-10-15 | rev 0 | T1 P0 R0\nT1 长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长\n",
+          "expect_contains": "超过上限"
+        }
+      ]
+    },
+    {
+      "id": "R-CTRL",
+      "covers": [
+        [
+          "R",
+          "ctrl-char"
+        ]
+      ],
+      "cases": [
+        {
+          "content": "#CTX 1 | 2026-10-15 | rev 0 | T1 P1 R1\nT1 x\n  P1.1 y\n    R a\tb\n",
+          "expect_contains": "控制字符"
+        }
+      ]
+    },
+    {
+      "id": "R-FFFD",
+      "covers": [
+        [
+          "T",
+          "bad-encoding"
+        ]
+      ],
+      "cases": [
+        {
+          "content": "#CTX 1 | 2026-10-15 | rev 0 | T1 P0 R0\nT1 �x\n",
+          "expect_contains": "U+FFFD"
+        }
+      ]
+    },
+    {
+      "id": "R-TAG-AMBIG",
+      "covers": [
+        [
+          "R",
+          "bracket-conflict"
+        ]
+      ],
+      "cases": [
+        {
+          "content": "#CTX 1 | 2026-10-15 | rev 0 | T1 P1 R1\nT1 x\n  P1.1 y\n    R z [约束\n",
+          "expect_contains": "方括号"
+        },
+        {
+          "content": "#CTX 1 | 2026-10-15 | rev 0 | T1 P1 R1\nT1 x\n  P1.1 y\n    R z 约束]\n",
+          "expect_contains": "方括号"
+        }
+      ]
+    },
+    {
+      "id": "R-TAG-LONG",
+      "covers": [
+        [
+          "R",
+          "tag-too-long"
+        ],
+        [
+          "T",
+          "tag-too-long"
+        ]
+      ],
+      "cases": [
+        {
+          "content": "#CTX 1 | 2026-10-15 | rev 0 | T1 P1 R1\nT1 x\n  P1.1 y\n    R z [这是一个超过十二个字符的标记]\n",
+          "expect_contains": "超过上限"
+        },
+        {
+          "content": "#CTX 1 | 2026-10-15 | rev 0 | T1 P0 R0\nT1 x [这同样也是超过十二字符的标记]\n",
+          "expect_contains": "超过上限"
+        }
+      ]
+    },
+    {
+      "id": "R-HEAD-SCOPE",
+      "covers": [
+        [
+          "header",
+          "bad-scope"
+        ]
+      ],
+      "cases": [
+        {
+          "content": "#CTX 1 | 2026-10-15 | rev 0 | T1 P0 R0 | scope:whatever\nT1 x\n",
+          "expect_contains": "作用域"
+        },
+        {
+          "content": "#CTX 1 | 2026-10-15 | rev 0 | T1 P0 R0 | scope:project\nT1 x\n",
+          "expect_contains": "作用域"
+        },
+        {
+          "content": "#CTX 1 | 2026-10-15 | rev 0 | T1 P0 R0 | scope:user:\nT1 x\n",
+          "expect_contains": "作用域"
+        },
+        {
+          "content": "#CTX 1 | 2026-10-15 | rev 0 | T1 P0 R0 | scope:taskxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nT1 x\n",
+          "expect_contains": "作用域"
+        }
+      ]
+    },
+    {
+      "id": "R-COUNT",
+      "covers": [
+        [
+          "header",
+          "count-mismatch"
+        ]
+      ],
+      "cases": [
+        {
+          "content": "#CTX 1 | 2026-10-15 | rev 0 | T5 P9 R9\nT1 x\n",
+          "expect_contains": "计数与实际不符"
+        }
+      ]
+    },
+    {
+      "id": "R-NOTOPIC",
+      "covers": [
+        [
+          "whole",
+          "empty-store"
+        ]
+      ],
+      "cases": [
+        {
+          "content": "#CTX 1 | 2026-10-15 | rev 0 | T0 P0 R0\n",
+          "expect_contains": "没有任何事物"
+        }
+      ]
+    },
+    {
+      "id": "R-TOP-LATE",
+      "covers": [
+        [
+          "top",
+          "wrong-level"
+        ]
+      ],
+      "cases": [
+        {
+          "content": "#CTX 1 | 2026-10-15 | rev 0 | T1 P0 R0\nT1 x\ntop: a\n",
+          "expect_contains": "必须紧跟在头部之后"
+        }
+      ]
+    },
+    {
+      "id": "R-FILE-EMPTY",
+      "covers": [
+        [
+          "whole",
+          "empty-file"
+        ]
+      ],
+      "cases": [
+        {
+          "raw_hex": "",
+          "expect_contains": "文件为空"
+        }
+      ]
+    },
+    {
+      "id": "R-ENC-NONUTF8",
+      "covers": [
+        [
+          "whole",
+          "bad-encoding-bytes"
+        ]
+      ],
+      "cases": [
+        {
+          "raw_hex": "234354582031207c20323032362d31302d3135207c207265762030207c2054312050302052300a543120d0d1bac30a",
+          "expect_contains": "UTF-8"
+        }
+      ]
+    },
+    {
+      "id": "R-ENC-BOM",
+      "covers": [
+        [
+          "whole",
+          "bom"
+        ]
+      ],
+      "cases": [
+        {
+          "raw_hex": "efbbbf234354582031207c20323032362d31302d3135207c207265762030207c2054312050302052300a543120780a",
+          "expect_contains": "BOM"
+        }
+      ]
+    },
+    {
+      "id": "R-E-SYNTAX",
+      "covers": [
+        [
+          "E",
+          "malformed"
+        ]
+      ],
+      "cases": [
+        {
+          "content": "#CTX 1 | 2026-10-16 | rev 0 | T1 P1 R0\nT1 事物\n  P1.1 目的\n    E 摘要 | bytes:10 | sha256:0123456789abcdef\n",
+          "expect_contains": "事件行格式非法"
+        },
+        {
+          "content": "#CTX 1 | 2026-10-16 | rev 0 | T1 P1 R0\nT1 事物\n  P1.1 目的\n    E 摘要 | src:a.py | sha256:0123456789abcdef\n",
+          "expect_contains": "事件行格式非法"
+        },
+        {
+          "content": "#CTX 1 | 2026-10-16 | rev 0 | T1 P1 R0\nT1 事物\n  P1.1 目的\n    E 摘要 | src:a.py | bytes:10\n",
+          "expect_contains": "事件行格式非法"
+        },
+        {
+          "content": "#CTX 1 | 2026-10-16 | rev 0 | T1 P1 R0\nT1 事物\n  P1.1 目的\n    E 摘要 | src:a.py | bytes:10 | sha256:0123\n",
+          "expect_contains": "事件行格式非法"
+        },
+        {
+          "content": "#CTX 1 | 2026-10-16 | rev 0 | T1 P1 R0\nT1 事物\n  P1.1 目的\n    E 摘要 | src:a.py | bytes:10 | sha256:0123456789ABCDEF\n",
+          "expect_contains": "事件行格式非法"
+        },
+        {
+          "content": "#CTX 1 | 2026-10-16 | rev 0 | T1 P1 R0\nT1 事物\n  P1.1 目的\n    E 摘要 | src:a.py | bytes:abc | sha256:0123456789abcdef\n",
+          "expect_contains": "事件行格式非法"
+        },
+        {
+          "content": "#CTX 1 | 2026-10-16 | rev 0 | T1 P1 R0\nT1 事物\n  P1.1 目的\n    E 带|竖线 | src:a.py | bytes:10 | sha256:0123456789abcdef\n",
+          "expect_contains": "半角竖线"
+        },
+        {
+          "content": "#CTX 1 | 2026-10-16 | rev 0 | T1 P1 R0 | E1\nT1 事物\n  P1.1 目的\n    E  | src:a.py | bytes:10 | sha256:0123456789abcdef\n",
+          "expect_contains": "事件行格式非法"
+        }
+      ]
+    },
+    {
+      "id": "R-E-EMPTY",
+      "covers": [
+        [
+          "E",
+          "empty"
+        ]
+      ],
+      "cases": [
+        {
+          "content": "#CTX 1 | 2026-10-16 | rev 0 | T1 P1 R0 | E1\nT1 事物\n  P1.1 目的\n    E    | src:a.py | bytes:10 | sha256:0123456789abcdef\n",
+          "expect_contains": "只有空白"
+        }
+      ]
+    },
+    {
+      "id": "R-E-LEVEL",
+      "covers": [
+        [
+          "E",
+          "wrong-level"
+        ]
+      ],
+      "cases": [
+        {
+          "content": "#CTX 1 | 2026-10-16 | rev 0 | T1 P1 R0 | E1\nT1 事物\n    E 摘要 | src:a.py | bytes:10 | sha256:0123456789abcdef\n",
+          "expect_contains": "层级跳跃"
+        }
+      ]
+    },
+    {
+      "id": "R-E-INDENT",
+      "covers": [
+        [
+          "E",
+          "wrong-indent"
+        ]
+      ],
+      "cases": [
+        {
+          "content": "#CTX 1 | 2026-10-16 | rev 0 | T1 P1 R0 | E1\nT1 事物\n  P1.1 目的\n  E 摘要 | src:a.py | bytes:10 | sha256:0123456789abcdef\n",
+          "expect_contains": "缩进 2 格的行必须是"
+        },
+        {
+          "content": "#CTX 1 | 2026-10-16 | rev 0 | T1 P1 R0 | E1\nT1 事物\n  P1.1 目的\n      E 摘要 | src:a.py | bytes:10 | sha256:0123456789abcdef\n",
+          "expect_contains": "缩进错位"
+        }
+      ]
+    },
+    {
+      "id": "R-E-COUNT",
+      "covers": [
+        [
+          "E",
+          "count-mismatch"
+        ]
+      ],
+      "cases": [
+        {
+          "content": "#CTX 1 | 2026-10-16 | rev 0 | T1 P1 R0\nT1 事物\n  P1.1 目的\n    E 摘要 | src:a.py | bytes:10 | sha256:0123456789abcdef\n",
+          "expect_contains": "事件节点计数不符"
+        },
+        {
+          "content": "#CTX 1 | 2026-10-16 | rev 0 | T1 P1 R0 | E2\nT1 事物\n  P1.1 目的\n    E 摘要 | src:a.py | bytes:10 | sha256:0123456789abcdef\n",
+          "expect_contains": "事件节点计数不符"
+        }
+      ]
+    },
+    {
+      "id": "R-E-LONG",
+      "covers": [
+        [
+          "E",
+          "too-long"
+        ]
+      ],
+      "cases": [
+        {
+          "content": "#CTX 1 | 2026-10-16 | rev 0 | T1 P1 R0 | E1\nT1 事物\n  P1.1 目的\n    E 超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超超 | src:a.py | bytes:10 | sha256:0123456789abcdef\n",
+          "expect_contains": "超过上限"
+        },
+        {
+          "content": "#CTX 1 | 2026-10-16 | rev 0 | T1 P1 R0 | E1\nT1 事物\n  P1.1 目的\n    E 摘要 | src:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa | bytes:10 | sha256:0123456789abcdef\n",
+          "expect_contains": "超过上限"
+        }
+      ]
+    },
+    {
+      "id": "R-E-BRACKET",
+      "covers": [
+        [
+          "E",
+          "bracket-conflict"
+        ]
+      ],
+      "cases": [
+        {
+          "content": "#CTX 1 | 2026-10-16 | rev 0 | T1 P1 R0 | E1\nT1 事物\n  P1.1 目的\n    E 带[方括号] | src:a.py | bytes:10 | sha256:0123456789abcdef\n",
+          "expect_contains": "方括号"
+        }
+      ]
+    },
+    {
+      "id": "R-E-CTRL",
+      "covers": [
+        [
+          "E",
+          "ctrl-char"
+        ]
+      ],
+      "cases": [
+        {
+          "content": "#CTX 1 | 2026-10-16 | rev 0 | T1 P1 R0 | E1\nT1 事物\n  P1.1 目的\n    E 摘要\u0001 | src:a.py | bytes:10 | sha256:0123456789abcdef\n",
+          "expect_contains": "控制字符"
+        }
+      ]
+    }
+  ]
+}

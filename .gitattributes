@@ -1,0 +1,17 @@
+# 统一按 LF 落盘：本项目的「确定性」承诺包括「同输入两次渲染字节一致」，
+# 而 CRLF/LF 混入会让字节级比较在不同平台给出不同结果（Windows 检出时尤其明显）。
+# 内核自己写文件时一律显式 newline="\n"，这两条要一起成立才有效。
+* text=auto eol=lf
+
+*.py   text eol=lf
+*.md   text eol=lf
+*.txt  text eol=lf
+*.ctx  text eol=lf
+*.json text eol=lf
+*.yml  text eol=lf
+
+# 二进制
+*.zip  binary
+*.pyc  binary
+*.png  binary
+*.jpg  binary
