@@ -744,7 +744,7 @@ def cmd_init(args):
     topics = []
     top_text = args.top
     if args.stdin:
-        delta = sys.stdin.read().split("\n")
+        delta = _read_stdin().split("\n")
         _stat, notes = apply_delta(topics, delta)
         for note in notes:
             print("NOTE %s" % note)
@@ -803,7 +803,7 @@ def cmd_add(args):
             delta.append("%s %s%s" % (SIGIL_REQUEST, args.item, "" if not args.tag else " [%s]" % args.tag))
         has_delta = True
     elif args.stdin:
-        delta = sys.stdin.read().split("\n")
+        delta = _read_stdin().split("\n")
         has_delta = True
     elif scope_arg is not None:
         delta, has_delta = [], False
@@ -1989,7 +1989,58 @@ def build_parser():
     return p
 
 
+def _ensure_utf8_console():
+    """把三个标准流固定到 UTF-8，避免中文在非 UTF-8 环境里崩掉或**被静默读坏**。
+
+    起因是一个真实缺陷：Windows 控制台下 Python 走 PEP 528 的 UTF-8 通道，本来没问题；
+    但只要标准流接了管道或被重定向，编码就退回系统本地编码（英文版 Windows 是
+    cp1252，中文版是 cp936），于是
+
+    - **输出侧**：中文一打印就抛 UnicodeEncodeError，`read` / `index` / `plan` 等命令
+      整体失败，只回一句「未预期的失败」；
+    - **输入侧**：`add --stdin < delta.txt` 把 UTF-8 字节按本地编码解 —— 在 cp1252 上
+      报 UnicodeDecodeError，在 cp936 上更糟：解成乱码**不报错**，乱码直接写进库。
+      后者意味着「同输入 → 同存储」这条确定性在每个平台上并不成立。
+
+    而「管道进、管道出」恰恰是本工具的主要用法（喂给下游程序或模型），CI 的
+    Windows runner 也是这种情况。所以三个流统一按 UTF-8 处理 —— 这也是本格式
+    自身的编码（.ctx、导出的 JSON/MD、随包的 delta.txt 模板全是 UTF-8）。
+
+    错误处理器分两种，不是随手写的：
+    - 输出用 `backslashreplace`：不可编码的字符要留**可见且可逆**的痕迹，不静默丢字。
+    - 输入保持 `strict`：输入解错会**写坏库**，宁可当场报错也不静默掺入替换字符
+      （替换字符 U+FFFD 正是本项目明令禁止落盘的东西）。报错措辞见 `_read_stdin`。
+
+    reconfigure 自 Python 3.7 起可用；若流已被包装成没有该方法的对象，就保持原样不动。
+    """
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="backslashreplace")
+        except (AttributeError, ValueError, OSError):
+            pass
+    try:
+        sys.stdin.reconfigure(encoding="utf-8")
+    except (AttributeError, ValueError, OSError):
+        pass
+
+
+def _read_stdin():
+    """读标准输入；解不出来时给可行动的报错，而不是裸的 UnicodeDecodeError。
+
+    管道里传的增量一律按 UTF-8 解读。Windows 上常见的 cp936/GBK 文本要先转码 ——
+    这句话必须出现在报错里，否则用户只会看到「未预期的失败」而无从下手。
+    """
+    try:
+        return sys.stdin.read()
+    except UnicodeDecodeError as exc:
+        raise CtxError(
+            "标准输入不是合法 UTF-8（%s）。本工具的增量输入一律按 UTF-8 解读，"
+            "请确认管道里传的是 UTF-8 文本；Windows 上的 cp936/GBK 文本需先转成 UTF-8"
+            "（例如用记事本另存为 UTF-8，或先跑 `iconv -f GBK -t UTF-8`）" % exc)
+
+
 def main(argv):
+    _ensure_utf8_console()
     parser = build_parser()
     args = parser.parse_args(argv)
     if not getattr(args, "cmd", None):

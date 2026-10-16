@@ -3,6 +3,13 @@
 
 不依赖任何外部服务，只用标准库 + tiktoken（缺失时退化为字符数）。
 """
+
+# 控制台输出固定 UTF-8（实现唯一在 scripts/ctx.py，本行只是转发；见 tests/_console.py）
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+from _console import ensure_utf8 as _ensure_utf8
+_ensure_utf8()
+
 import os, sys, json
 
 try:

@@ -6,6 +6,13 @@
 每条判据 = 若干「关键词组」，组内取 or、组间取 and。
 所有关键词都对大小写不敏感，同时接受中英文写法（执行者可能混用）。
 """
+
+# 控制台输出固定 UTF-8（实现唯一在 scripts/ctx.py，本行只是转发；见 tests/_console.py）
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+from _console import ensure_utf8 as _ensure_utf8
+_ensure_utf8()
+
 import json
 import os
 import re

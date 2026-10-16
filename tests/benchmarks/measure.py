@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """测量各视图的真实字符量，用于回填文档里的效率对照表（不估、只实测）。"""
+
+# 控制台输出固定 UTF-8（实现唯一在 scripts/ctx.py，本行只是转发；见 tests/_console.py）
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+from _console import ensure_utf8 as _ensure_utf8
+_ensure_utf8()
+
 import os
 import subprocess
 import sys

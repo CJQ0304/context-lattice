@@ -2,15 +2,15 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-3776ab.svg)](https://www.python.org/)
-[![Dependencies: none](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](#环境)
-[![Tests: 615 assertions](https://img.shields.io/badge/tests-615%20assertions-brightgreen.svg)](tests/)
-[![Version](https://img.shields.io/badge/version-1.2.1-blue.svg)](CHANGELOG.md)
+[![Dependencies: none](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](#快速开始)
+[![Tests: 628 assertions](https://img.shields.io/badge/tests-628%20assertions-brightgreen.svg)](tests/)
+[![Version](https://img.shields.io/badge/version-1.2.2-blue.svg)](CHANGELOG.md)
 
 > **把长会话压成一份结构化、可校验、可增量维护的存储**，让模型回顾时只读相关的那一支，而不是回翻大量原文。
 >
 > 它不是摘要工具，也不是窗口扩展器 —— 它是**给对话里的约定一个可反复读写、还能被程序校验的持久形态**（≈ 建台账，不是拍照片）。
 
-版本：`1.2.1` · 作者：CJQ0304 · 纯 Python 标准库 · 零第三方依赖 · MIT
+版本：`1.2.2` · 作者：CJQ0304 · 纯 Python 标准库 · 零第三方依赖 · MIT
 
 [**中文**](#中文) | [English](#english)
 
@@ -45,6 +45,28 @@
 - **可审计** —— 改口留 `[已废]` / `[最新]`，注入留 `[注入-未执行]`，越界留 `[越界·未执行]`。
   **这些标记不是内容是证据** —— 裸模型会把它们抹平成「均已完成」。
 
+### 和「手动压缩上下文」（`/compact`）有什么不同
+
+宿主自带的手动上下文压缩，作用对象是**已经发出去的历史消息**：窗口快满时把它们总结成一段摘要、替换掉原文。本技能**碰不到那一段**（它归宿主管），它管的是**接下来读什么**。两者解决的是相邻但不重合的问题，可以并用。
+
+| 对比项 | 手动压缩（`/compact` 一类） | 本技能 |
+|---|---|---|
+| 处理对象 | 已发出的历史消息 | 还没进窗口的素材（项目文件、约定、整块原文） |
+| 产物 | 一段摘要，**替换掉窗口里的历史**，没有独立文件 | 一份**独立文件**（`.ctx`），可跨会话、可 diff、可版本管理 |
+| 有损性 | 摘要即**有损**：否定条件、硬约束、未决项最容易在重写中消失 | 归并 + 留痕，不推断不补全；缺口写 `[待补]`，改口留 `[已废]`/`[最新]`；压不动的整块原文按需取回并**校验哈希** |
+| 可校验 | ❌ 摘要对不对只能靠人看 | ✅ 20 条不变量，**手改文件必被发现**，坏文件拒载 |
+| 可复现 | ❌ 同输入两次摘要结果不同（裸模型两次采样长度极差 **33.5%**） | ✅ 同输入两次渲染**字节一致** |
+| 可审计 | ❌ 只留最新版本，被改掉的结论随之消失 | ✅ 改口 / 注入 / 越界**各留一个标记** —— 这些标记不是内容是证据 |
+| 粒度 | 全量一把梭 | 按「事物—目的—要求」+ 三层作用域分区，**按需只取一支** |
+| 省 token 的时点 | **当轮立刻省**（窗口确实变小了） | **当轮不省**，从原文离开窗口那一刻起才省 |
+| 原文能否找回 | 压掉的历史无法恢复 | 它压根不压已发出的历史；登记为事件节点的原文留在盘上，`fetch` 取回并校验 |
+
+**一句话**：`/compact` 是对**已经发生的事**做一次有损快照 —— 救急、一次性、不可校验；本技能是给**要反复用到的约定**建一份台账 —— 跨会话、可增量、可校验、按需下钻。
+
+**两者互补，不是替代**：窗口快满、且这些内容不会再回头用 → 直接压缩更划算；有一批约定**跨会话还要用**、或有一块素材**压不动但以后还得回来找** → 先建库（必要时再压缩历史）。
+
+> 各宿主的压缩实现不同（触发方式、是否支持附加指令都不一样），**具体行为以你所用宿主的说明为准**；上表描述的是「摘要式压缩」这一类做法的共性，不是某个宿主的接口细节。
+
 ### 它不做什么
 
 | 不做 | 原因 |
@@ -54,11 +76,11 @@
 | 不产生新信息 | 它归并和组织，不推断、不补全（缺口一律写 `[待补]`） |
 | 不管叙事 | 它的产出是台账，不是会议纪要 |
 
-**判据是「任务状态需要离开窗口再回来」，不是「对话多轮」。** 真实触发只有三种：跨会话 / 长会话被自动压缩或截断 / 窗口吃紧需主动卸载。
+**判据是「任务状态需要离开窗口再回来」，不是「对话多轮」。** 真实触发只有三种：跨会话 / 长会话被自动压缩或截断 / 窗口吃紧需主动卸载。**再补一条限定**：回来时要用的那部分得**明显小于全量** —— 如果每次都还要用到全部素材，任何读取源替换都救不了（见下面实测表的最后一行）。
 
 ### 快速开始
 
-需要 **Python 3.8+**，无需安装任何依赖。
+需要 **Python 3.8+**，无需安装任何依赖。标准输入输出一律按 **UTF-8** 处理（中文版 Windows 的 cp936/GBK 文本需先转码 —— 输入若不是 UTF-8 会**明确报错而不是静默解成乱码**）。
 
 ```bash
 git clone https://github.com/CJQ0304/context-lattice.git
@@ -106,19 +128,22 @@ python scripts/ctx.py plan --root src --work kernel.py,main.py
 
 ### 实测数据（含负值，可复现）
 
-**语料 = 本交付包自身**（14 个文件 / 86,276 token，机械量）。复现：`python tests/benchmarks/realworld-probe.py`
+> **两个口径，别混用**：对外可引用的保守值是 **`42%–57%`** —— 来自 **A/B 对照**（独立实例、同题同 rubric，信息保真与裸模型**打平**）的**回顾成本降幅**；下面的表是**同一份语料上的机械测量**，数字更大，但它算的是「若真去读会读多少」，**不是**实测的模型开销。
+
+**语料 = 本交付包自身**（14 个文件 / 94,233 token，机械量）。复现：`python tests/benchmarks/realworld-probe.py`
 
 | 任务 | 工作集（保守 / 乐观） | 净省（保守 / 乐观） |
 |---|---|---:|
-| 给 `ctx.py` 加一个子命令 | 35,536 / 14,994 | **57.7% / 81.5%** |
-| 改 `SKILL.md` 的 description | 7,581 / 1,584 | **90.1% / 97.1%** |
-| 新增一条拆分规则 | 3,992 / 1,204 | **94.3% / 97.5%** |
-| **反例**：任务要读完全部素材 | 86,276 = 100% | **−6.7%（反而更贵）** |
+| 给 `ctx.py` 加一个子命令 | 36,466 / 14,994 | **60.3% / 83.1%** |
+| 改 `SKILL.md` 的 description | 8,506 / 2,082 | **90.0% / 96.8%** |
+| 新增一条拆分规则 | 3,992 / 1,204 | **94.8% / 97.7%** |
+| **反例**：任务需要**反复用到全部素材** | 94,233 = 100% | **−6.3%（反而更贵）** |
 
-- **保守口径** = 任务涉及的文件整份读；**乐观口径** = 按结构边界（markdown 标题 / `def`）切片后只读命中段。
-- **门控**（`plan`，脚本算、不让模型估）：局部任务判 `STORE +52.1%`，反例判 `INLINE −6.7%`，库级断点 `1 − I/T = 93.3%`。
-- **事件节点**：14 个节点指向 **245,156 字节**原文，库内只占 **1,749 字符**（每 1 字符指向约 140 字节原文，原文一个字节都不进窗口）。
-- **体积无关性**：源文件正文翻倍（92,484 → 184,969 字节），视图 token 只从 82 变 84。
+- **保守口径** = 任务涉及的文件整份读；**乐观口径** = 按结构边界（markdown 标题 / `def`）切片后只读命中段。净省算式里含索引层 `I`，而 `I` 带 ±8 token 的**哈希噪声**（见下面「门控」那条），所以**末位小数可能在 ±0.1pp 内跳动**。
+- **门控**（`plan`，脚本算、不让模型估）：局部任务判 `STORE +55.0%`，任务需反复用到全部素材时判 `INLINE −6.3%`，库级断点 `1 − I/T = 93.7%`。⚠️ 这里的 `I` 是 `plan` 现算的**细粒度导航层**（5,966 token），与上表「净省」用的**库索引层**（约 930 token）**不是同一个量**，两者差约 6.4 倍 —— 报索引体积必须带上口径。
+- ⚠️ **「读完全部素材」本身不是反例** —— 任何任务都要读它用到的那份素材，本技能从不声称能省这一笔（它省的是「不读**无关**的部分」）。**反例的判据是「同一份素材要被反复用到、且每次的工作集都接近全量」**：这时「不读无关部分」已经没有可省的空间，白白多付一层索引。上表最后一行的整份读，指的就是这种「反复回到全量」的极端形态。
+- **事件节点**：14 个节点指向 **268,159 字节**原文，库内只占 **1,749 字符**（每 1 字符指向约 153 字节原文，原文一个字节都不进窗口）。
+- **体积无关性**：源文件正文翻倍（95,288 → 190,577 字节），视图 token 只从 82 变 85。
 
 > ⚠️ **绝对值绑定交付包版本** —— 语料就是本包自身，改一次文档 T 就变。引用时请连版本号一起引；相对量（净省百分比）才是稳定的那个。
 >
@@ -256,14 +281,14 @@ context-lattice/
 │   ├── host-memory-adapter.md  宿主记忆适配层
 │   ├── store-format.md         .ctx 语法、20 条不变量、跨库索引格式
 │   ├── compression-strategy.md 压缩策略与效率对照
-│   ├── degradation.md          19 项降级路径
+│   ├── degradation.md          20 项降级路径
 │   └── coverage-matrix.md      八维输入空间覆盖矩阵
 ├── scripts/
 │   └── ctx.py                  确定性内核（唯一写入者，纯标准库）
 ├── templates/                  空库骨架 / 增量示例 / 会话接入提示
 │
 │   ── 以下只在仓库里存在，不进技能安装包 ──
-├── tests/                      验收集：14 套件 / 615 断言 / 收敛矩阵 / 行为层裁判 / 基准探针 / 负向注入
+├── tests/                      验收集：15 套件 / 628 断言 / 收敛矩阵 / 行为层裁判 / 基准探针 / 负向注入
 └── docs/                       质检报告、真实场景测试报告、行为层报告、压测与 A/B 报告
 ```
 
@@ -281,10 +306,10 @@ context-lattice/
 
 几个数字（都可在本机复现）：
 
-- 验收集 **14 套件 / 615 断言 / 0 失败**，零第三方依赖；
+- 验收集 **15 套件 / 628 断言 / 0 失败**，零第三方依赖；
 - 收敛矩阵 **35 条规则 / 38 个覆盖格 / 61 个夹具 / 格均 1.00 / 漂移 0**；
 - 打包器做**五层平台视角模拟**（落盘 / 路径 / 编码 / 元数据 / 内容），并配 **6 个坏包**，必须全部被拦下；
-- 四处负向注入全部被断言捕获（1/1、4/4、2/2、2/2）。
+- 五处负向注入全部被断言捕获（1/1、4/4、2/2、2/2、2/2）。
 
 ### 安装为 AI 技能
 
@@ -316,7 +341,7 @@ cp -r context-lattice ~/.workbuddy/skills/
 
 ### 降级
 
-无 Python 运行环境、目录不可写、输入超长、编码损坏、作用域判不出来、索引缺失、事件节点取回失败等 **19 种情况**都有明确处置与声明口径，见 [`references/degradation.md`](references/degradation.md)。核心原则：**不静默失败，不编造结果**。
+无 Python 运行环境、目录不可写、输入超长、编码损坏（含标准输入非 UTF-8）、作用域判不出来、索引缺失、事件节点取回失败等 **20 种情况**都有明确处置与声明口径，见 [`references/degradation.md`](references/degradation.md)。核心原则：**不静默失败，不编造结果**。
 
 ### 许可
 
@@ -330,7 +355,7 @@ MIT，见 [LICENSE](LICENSE)。版权归 **CJQ0304 &lt;cjq0304@outlook.com&gt;**
 >
 > It is **not** a summarizer and **not** a context-window extender. It gives the agreements inside a conversation a persistent form that can be read and written repeatedly **and checked by a program** — think *keeping a ledger*, not *taking a snapshot*.
 
-Version `1.2.1` · Author: CJQ0304 · Pure Python standard library · **Zero dependencies** · MIT
+Version `1.2.2` · Author: CJQ0304 · Pure Python standard library · **Zero dependencies** · MIT
 
 ### The problem it solves
 
@@ -346,6 +371,28 @@ Three follow-up problems, each with a mechanism:
 
 > **A boundary that must be stated:** this does **not** raise your context limit. It changes *the form in which project background enters the window* and *how much you fetch on recall*. **What determines the payoff is the locality of the task, not the tool.**
 
+### How it differs from manual context compaction (`/compact`)
+
+A host's manual context compaction acts on the **history that has already been sent**: when the window fills up it summarizes those turns and replaces the raw text with the summary. This skill **cannot touch that part** — it belongs to the host. What it governs is **what gets read next**. The two solve adjacent but different problems, and they compose.
+
+| | Manual compaction (`/compact`-style) | This skill |
+|---|---|---|
+| Object | History already sent | Material not yet in the window (files, agreements, raw chunks) |
+| Output | One summary that **replaces the window's history**; no standalone artifact | A **standalone file** (`.ctx`) — cross-session, diffable, versionable |
+| Lossiness | A summary is **lossy**: negations, hard constraints and open items are the first things to vanish | Merge + leave traces, never infer or complete; gaps become `[待补]`, reversals become `[已废]`/`[最新]`; incompressible chunks are fetched on demand and **hash-verified** |
+| Verifiable | ❌ Only a human can tell whether the summary is right | ✅ 20 invariants; **hand-editing is always detected**; a corrupt file is refused |
+| Reproducible | ❌ Two runs on the same input differ (bare-model samples varied **33.5%** in length) | ✅ Two renders of the same input are **byte-identical** |
+| Auditable | ❌ Only the newest version survives; superseded conclusions disappear | ✅ Reversals, injections and out-of-scope requests each leave a marker — those markers are evidence, not content |
+| Granularity | One pass over everything | Partitioned by topic → purpose → requirement and by three scopes; **fetch just one branch** |
+| When it saves tokens | **Immediately, that turn** (the window really does shrink) | **Not that turn** — saving starts the moment the raw text leaves the window |
+| Recovering the source | Compacted history is unrecoverable | It never compacts sent history; raw text registered as an event node stays on disk and can be fetched and verified |
+
+**In one line**: `/compact` takes a lossy snapshot of **what already happened** — emergency use, one-shot, unverifiable. This skill keeps a **ledger for the agreements you will keep coming back to** — cross-session, incremental, verifiable, drill-down on demand.
+
+**Complementary, not interchangeable**: the window is nearly full and that content will never be revisited → compact instead. A set of agreements still needed **in another session**, or a chunk that **won't compress but must be re-found later** → build the store first (compact the history afterwards if you still need to).
+
+> Hosts implement compaction differently (what triggers it, whether extra instructions are accepted). **Check your host's documentation for exact behaviour**; the table describes summarization-based compaction in general, not one host's interface.
+
 ### What it does not do
 
 | Not | Why |
@@ -356,7 +403,7 @@ Three follow-up problems, each with a mechanism:
 
 ### Quick start
 
-**Python 3.8+**, no dependencies.
+**Python 3.8+**, no dependencies. All standard input and output is **UTF-8** (cp936/GBK text on Chinese Windows must be converted first — input that is not UTF-8 fails with an explicit error instead of being silently decoded into mojibake).
 
 ```bash
 git clone https://github.com/CJQ0304/context-lattice.git && cd context-lattice
@@ -384,19 +431,22 @@ python scripts/ctx.py plan --root src --work kernel.py,main.py
 
 ### Measured results (including the negative one)
 
-**Corpus = this very package** (14 files / 86,276 tokens, a mechanical quantity). Reproduce with `python tests/benchmarks/realworld-probe.py`.
+> **Two different measures — do not mix them.** The conservative, citable figure is **`42%–57%`**: the **recall-cost reduction** measured in an **A/B test** (independent runs, same task, same rubric, information fidelity **tied** with the bare model). The table below is a **mechanical measurement on the same corpus** — larger numbers, but they model "how much would be read if you did read it", not a measured model cost.
+
+**Corpus = this very package** (14 files / 94,233 tokens, a mechanical quantity). Reproduce with `python tests/benchmarks/realworld-probe.py`.
 
 | Task | Working set (conservative / optimistic) | Net saving (conservative / optimistic) |
 |---|---|---:|
-| Add a subcommand to `ctx.py` | 35,536 / 14,994 | **57.7% / 81.5%** |
-| Rewrite the `SKILL.md` description | 7,581 / 1,584 | **90.1% / 97.1%** |
-| Write a new splitting rule | 3,992 / 1,204 | **94.3% / 97.5%** |
-| **Counter-example**: task needs everything | 86,276 = 100% | **−6.7% (more expensive)** |
+| Add a subcommand to `ctx.py` | 36,466 / 14,994 | **60.3% / 83.1%** |
+| Rewrite the `SKILL.md` description | 8,506 / 2,082 | **90.0% / 96.8%** |
+| Write a new splitting rule | 3,992 / 1,204 | **94.8% / 97.7%** |
+| **Counter-example**: the task must **revisit all of the material** | 94,233 = 100% | **−6.3% (more expensive)** |
 
-- **Conservative** = read the involved files whole; **optimistic** = slice at structural boundaries and read only matching sections.
-- **Gate** (`plan`, computed by the script — never estimated by the model): local task → `STORE +52.1%`; counter-example → `INLINE −6.7%`; store-level break-even `1 − I/T = 93.3%`.
-- **Event nodes**: 14 nodes point at **245,156 bytes** of raw text while occupying **1,749 characters** in the store.
-- **Volume invariance**: doubling the raw text (92,484 → 184,969 bytes) moved the view from 82 to 84 tokens.
+- **Conservative** = read the involved files whole; **optimistic** = slice at structural boundaries and read only matching sections. The net-saving formula contains the index layer `I`, which carries ±8 tokens of **hash noise** (see the *Gate* bullet below), so **the last decimal may move within ±0.1pp**.
+- **Gate** (`plan`, computed by the script — never estimated by the model): local task → `STORE +55.0%`; a task that must revisit all of the material → `INLINE −6.3%`; store-level break-even `1 − I/T = 93.7%`. ⚠️ Here `I` is the fine-grained **navigation layer** `plan` computes (5,966 tokens), not the **store index layer** (~930 tokens) used in the table above — the two differ by ~6.4×, so an index size is meaningless without its definition.
+- ⚠️ **"Reading all of the material" is not itself the counter-example** — every task reads the material it needs, and this skill never claims to save that cost (what it saves is *not reading the irrelevant parts*). The counter-example is a task that **keeps coming back to all of it, with a working set near 100% every time**: at that point "skip the irrelevant parts" has nothing left to save, and you pay for an extra index layer. The whole-corpus row above is that extreme case.
+- **Event nodes**: 14 nodes point at **268,159 bytes** of raw text while occupying **1,749 characters** in the store.
+- **Volume invariance**: doubling the raw text (95,288 → 190,577 bytes) moved the view from 82 to 85 tokens.
 
 > ⚠️ **Absolute values are tied to the package revision** — the corpus *is* this package, so editing a doc changes T. Quote the version alongside any number; the ratios are the stable part.
 >
@@ -433,7 +483,7 @@ The runtime package (`SKILL.md`, `references/`, `scripts/`, `templates/`) ships 
 
 This repository publishes the **verification process**, not just the result:
 
-- `tests/` — 14 suites / **615 assertions** / 0 failures, zero third-party dependencies; a convergence matrix (35 rules / 38 cells / 61 fixtures); behavior-layer scorers with their own positive/negative fixtures; benchmark probes; and **negative-injection** scripts that deliberately break the decision code to prove the assertions actually fire.
+- `tests/` — 15 suites / **628 assertions** / 0 failures, zero third-party dependencies; a convergence matrix (35 rules / 38 cells / 61 fixtures); behavior-layer scorers with their own positive/negative fixtures; benchmark probes; and **five negative-injection** scripts that deliberately break the decision code to prove the assertions actually fire.
 - `docs/QC-REPORT.md` — quality report including a **defect ledger across six adversarial rounds** and 19 documented limitations.
 - `docs/REPORT-realworld.md` — real-corpus measurements plus a two-arm behavioral comparison, **including the case where the skill showed no attributable gain**.
 - `docs/REPORT-behavior.md` — A/B and scope probes, with an explicit disclosure of **what the data does not prove**.

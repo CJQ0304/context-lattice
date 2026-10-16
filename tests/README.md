@@ -3,7 +3,7 @@
 **零第三方依赖**，只用 Python 标准库。全部命令从**仓库根**运行。
 
 ```bash
-python tests/test_all.py                  # 主入口：14 套件 / 615 断言
+python tests/test_all.py                  # 主入口：15 套件 / 628 断言
 python tests/smoke.py                     # 冒烟：各类视图与错误路径逐条打印
 python tests/convergence_matrix.py --spec tests/convergence_spec.json --audit scripts/ctx.py
 python tests/pack_and_verify.py           # 需 PyYAML；打包 + 平台视角模拟解析
@@ -19,6 +19,7 @@ python tests/pack_and_verify.py           # 需 PyYAML；打包 + 平台视角�
 | `smoke.py` | 冒烟：自建演示库后逐条打印每种视图与错误路径，用来肉眼确认「脚本还活着、输出长什么样」 |
 | `pack_and_verify.py` | 打包 + 五层平台视角模拟（落盘 / 路径 / 编码 / 元数据 / 内容）+ 6 个坏包必须被拦下 |
 | `pkg_boundary.py` | **交付包边界的唯一真相**：哪些路径随包分发、哪些只在仓库里 |
+| `_console.py` | 把可跑件的 stdout/stderr 固定到 UTF-8。**只是转发** `scripts/ctx.py` 里的实现（ctx.py 必须自包含，不能反向依赖 tests/），全项目仍只有一处真相 |
 | `behavior/` | 行为层评分器（裁判）与它们判过的原始产物 |
 | `benchmarks/` | 产生文档里那些实测数据的探针脚本 |
 | `injection/` | 负向注入：把判定代码故意弄坏，确认断言真的会红 |
@@ -41,6 +42,10 @@ python tests/pack_and_verify.py           # 需 PyYAML；打包 + 平台视角�
 | 12 | 行为层评分器（正负夹具） | 16 |
 | 13 | 事件节点与门控 | 84 |
 | 14 | 交付包自洽（无悬空引用） | 4 |
+| 15 | 控制台流编码（管道 + 非 UTF-8 本地编码） | 13 |
+| **合计** | | **628** |
+
+> 上表逐行抄自 `python tests/test_all.py` 末尾的「套件明细」——它是**从实际执行记账**的（`len(SUITES)` 派生），不是声明。改完断言请重跑一次再抄，别手改这里的数字（这正是本目录第 4 条方法论要防的事）。
 
 ## 四条方法论，比套件本身更重要
 
@@ -51,16 +56,19 @@ python tests/pack_and_verify.py           # 需 PyYAML；打包 + 平台视角�
 
 ## 负向注入（`injection/`）
 
-把判定代码故意弄坏，验证对应断言会红。**全绿不等于断言有效**，这四条是「断言不是假证据」的证明：
+把判定代码故意弄坏，验证对应断言会红。**全绿不等于断言有效**，这五条是「断言不是假证据」的证明：
 
 ```bash
 python tests/injection/inject-drift.py           # 短路 STALE-SRC 分支   → 期望 1/1 命中
 python tests/injection/inject-kind.py            # 退回「非 E 即 R」写法  → 期望 4/4 命中
 python tests/injection/inject-refs.py            # 插入一条假引用         → 期望 2/2 命中
 python tests/injection/inject-suite-registry.py  # 塞孤儿套件 + 套件重号   → 期望 2/2 命中
+python tests/injection/inject-console-encoding.py # 去掉 UTF-8 兜底 / 只修输出漏掉 stdin → 期望 2/2 命中
 ```
 
 退出码 `0` = 注入被捕获（断言有效）；`1` = 断言是假证据。
+
+最后一条自带**正控**：先在不注入的情况下跑一遍套件 15，要求 0 失败 —— 少了这一臂，「套件本来就永远红」会被误读成「断言有效」。
 
 ## 范围声明
 

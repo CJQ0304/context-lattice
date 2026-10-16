@@ -2,10 +2,10 @@
 name: context-lattice
 display_name: 上下文双层键压缩存储
 display_name_en: Context Lattice Store
-description: "长会话上下文压缩与记忆管理：把用户每轮说的内容按「事物—目的—要求」两级键拆解归档成一份结构化存储，并按「用户级／工作区级／任务级」三层作用域分区，回顾时按需读取相关分支，不必回翻冗长的原始对话；压不动的整块素材（要逐字改的代码、要逐行核的数据）可登记为**事件节点**——库里只留摘要、来源指针、字节数与内容哈希，原文不进窗口，需要时再按需取回并校验；支持跨库索引定位、生命周期老化与升格、结构校验、压缩效果统计与跨会话续接。触发词：上下文压缩、上下文太长、上下文不够用、会话记忆、回顾之前聊的内容、把对话整理成结构、长对话上下文管理、长期记忆、跨会话记忆、记忆整理、工作区备忘、记忆该放哪一层、读取源替换、原文不进上下文、按需取回原文。不适用于：单轮问答、短会话、纯闲聊，或要求直接把整段原文做摘要的请求。"
-description_zh: "把长会话按「事物—目的—要求」两级键压缩成结构化存储，并按用户级／工作区级／任务级三层作用域分区；回顾时按需读取相关分支而不回翻原始对话；压不动的整块素材登记为事件节点（只存摘要、来源指针、字节数与内容哈希，原文不进窗口、按需取回并校验）；支持跨库索引定位、生命周期老化升格、结构校验、压缩统计与跨会话续接。"
-description_en: "Compress a long conversation into a structured two-level-key store (topic → purpose → requirement) partitioned by three scopes (user / project / task) so later recall reads only the relevant branch instead of re-scanning the raw transcript. Incompressible chunks (code to edit, data to verify) can be registered as event nodes that keep only a summary, source pointer, byte count and content hash in the store — the raw text never enters the window and is fetched on demand and verified. Also supports cross-store indexing and lookup, lifecycle aging and promotion, validation, size reporting, and cross-session persistence. Use for context compression, running out of context, session memory, long-term memory, or reviewing what was discussed earlier."
-version: 1.2.1
+description: "长会话上下文压缩与记忆管理：把用户每轮说的内容按「事物—目的—要求」两级键拆解归档成一份结构化存储，并按「用户级／工作区级／任务级」三层作用域分区，回顾时按需读取相关分支，不必回翻冗长的原始对话；压不动的整块素材（要逐字改的代码、要逐行核的数据）可登记为**事件节点**——库里只留摘要、来源指针、字节数与内容哈希，原文不进窗口，需要时再按需取回并校验；支持跨库索引定位、生命周期老化与升格、结构校验、压缩效果统计与跨会话续接。**实测优势**：在需要反复回到同一议题的场景（跨会话续接、长会话被压缩或截断、窗口吃紧需主动卸载），回顾成本比回读原文低 **42%–57%**（A/B 对照实测，信息保真不受损），局部性好的任务机械测量净省可达 **90%+**；压不动的整块素材入库后**每 1 字符指向约 153 字节原文，原文一个字节都不进窗口**；产物**可校验**（坏文件拒载）且**可复现**（同输入两次渲染字节一致）。触发词：上下文压缩、上下文太长、上下文不够用、会话记忆、回顾之前聊的内容、把对话整理成结构、长对话上下文管理、长期记忆、跨会话记忆、记忆整理、工作区备忘、记忆该放哪一层、读取源替换、原文不进上下文、按需取回原文。不适用于：单轮问答、短会话、纯闲聊、当轮就要省 token 的场景（原文本来还在窗口里，**当轮不省**），或要求直接把整段原文做摘要的请求。"
+description_zh: "把长会话按「事物—目的—要求」两级键压缩成结构化存储，并按用户级／工作区级／任务级三层作用域分区；回顾时按需读取相关分支而不回翻原始对话；压不动的整块素材登记为事件节点（只存摘要、来源指针、字节数与内容哈希，原文不进窗口、按需取回并校验）；支持跨库索引定位、生命周期老化升格、结构校验、压缩统计与跨会话续接。优势：反复回到同一议题时回顾成本比回读原文低 42%–57%（A/B 实测，信息保真不受损），局部性好的任务机械实测净省 90%+；事件节点让库内每 1 字符指向约 153 字节原文，原文一个字节都不进窗口；产物可校验、可复现。边界：当轮不省（原文仍在窗口里）；需要反复用到全部素材时反而更贵。"
+description_en: "Compress a long conversation into a structured two-level-key store (topic → purpose → requirement) partitioned by three scopes (user / project / task) so later recall reads only the relevant branch instead of re-scanning the raw transcript. Incompressible chunks (code to edit, data to verify) can be registered as event nodes that keep only a summary, source pointer, byte count and content hash in the store — the raw text never enters the window and is fetched on demand and verified. Also supports cross-store indexing and lookup, lifecycle aging and promotion, validation, size reporting, and cross-session persistence. Value: when a topic is revisited, recall costs 42%-57% less than re-reading the raw text (measured in an A/B test with information fidelity unchanged), and up to 90%+ on tasks with good locality; event nodes keep the raw text out of the window (roughly 153 bytes of source per stored character); output is verifiable and byte-reproducible. Limits: no saving in the same session (the raw text is still in the window), and it costs more when a task must keep revisiting all of the source material. Use for context compression, running out of context, session memory, long-term memory, or reviewing what was discussed earlier."
+version: 1.2.2
 author: CJQ0304
 category: coding
 allowed-tools: Read, Write, Edit, Bash, Glob
@@ -84,6 +84,14 @@ agent_created: true
 > **别混两笔账**：事件节点**不省读取成本**（原文该读还得读），它买的是「**重新找到它**」的成本。压缩买「读得更少」，事件节点买「找得更快」。
 >
 > **不知道这块该不该压？先跑门控**：`ctx.py plan --root <素材目录> --work <本任务的文件>` 会算出工作集占全量的比例，给出 `STORE`（用局部视图）或 `INLINE`（整块当一个事件节点）。**阈值由脚本算，不要让模型估自己的窗口占用。**
+
+### 它到底省多少（报给用户时必须带口径）
+
+被问到「能省多少 token」时，按下面三条回答，**不要把最漂亮的数字单独说出去**：
+
+- **回顾成本**：需要反复回到同一议题时，**比回读原文低 42%–57%**（A/B 对照实测，信息保真不受损）。局部性好的任务，机械测量净省 **90%+**（语料 = 本交付包自身；该绝对值随版本变动，引用请连版本号）。
+- **边界（必须一起说）**：**当轮不省**（原文还在窗口里）；需要**反复用到全部素材**的任务反而更贵（实测 **−6.3%**）——「读一次全量」不是反例（每个任务都要读它用到的那份素材），反例是**每次回顾的工作集都接近全量**；短对话**反膨胀**（12 轮 234 字符 → 存储 529 字符）。**收益来自任务的局部性，不是技能本身。**
+- **口径别混**：`42%–57%` 是 A/B 对照里的**成本**降幅，**不是**「记得更多」——信息保真与裸模型**打平**（0%）。只说「省 90%」或只说「记得更多」都是错的。
 
 ## 二、每轮收到用户输入后的五步
 
@@ -215,5 +223,5 @@ T2 竞品分析 [已结]
 | `@references/host-memory-adapter.md` | **宿主记忆适配层**：三层作用域 ↔ 实际记忆文件的映射、两条接线路线、30 天蒸馏怎么接 |
 | `@references/store-format.md` | `.ctx` 语法（含 `E` 行与事件节点）、十字链表映射、编号规则、20 条不变量、`scope:` 与 `\| E<n>` 头部段、跨库索引格式、已知取舍 |
 | `@references/compression-strategy.md` | 分层降维 / 归并去重 / 预算裁剪、效率对照、不可压内容、失效信号 |
-| `@references/degradation.md` | 无 Python、无写权限、超长、编码异常、作用域判不出、索引缺失、事件节点源不可读或已漂移等 19 项降级路径 |
+| `@references/degradation.md` | 无 Python、无写权限、超长、编码异常（文件与标准输入）、作用域判不出、索引缺失、事件节点源不可读或已漂移等 20 项降级路径 |
 | `@references/coverage-matrix.md` | 八维输入空间覆盖矩阵（H1）与残余空格声明 |

@@ -8,6 +8,13 @@
 用法（在仓库根）：python tests/injection/inject-suite-registry.py
 退出码：0 = 两类注入都被捕获（自检断言有效）/ 1 = 假证据。
 """
+
+# 控制台输出固定 UTF-8（实现唯一在 scripts/ctx.py，本行只是转发；见 tests/_console.py）
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+from _console import ensure_utf8 as _ensure_utf8
+_ensure_utf8()
+
 import os
 import sys
 

@@ -5,6 +5,13 @@
 同题、同模型、同 rubric。A 组产物由脚本真实生成（可复核），B 组产物由作者按「裸模型直接作答」形态手写。
 """
 
+# 控制台输出固定 UTF-8（实现唯一在 scripts/ctx.py，本行只是转发；见 tests/_console.py）
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+from _console import ensure_utf8 as _ensure_utf8
+_ensure_utf8()
+
+
 import hashlib
 import os
 import subprocess

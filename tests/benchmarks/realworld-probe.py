@@ -14,6 +14,13 @@
   2. 乐观口径的切片由**结构边界**机械切（markdown 标题 / python def），
      关键词命中即入选，不靠人工挑段。切片规则写在 pick() 里，可复核。
 """
+
+# 控制台输出固定 UTF-8（实现唯一在 scripts/ctx.py，本行只是转发；见 tests/_console.py）
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+from _console import ensure_utf8 as _ensure_utf8
+_ensure_utf8()
+
 import hashlib
 import json
 import os
@@ -37,6 +44,11 @@ PY = sys.executable
 DATE = "2026-10-16"
 
 ENC = tiktoken.get_encoding("cl100k_base")
+
+# 体积无关性判据的上界：E 行元数据（`bytes:` 位数 + `sha256:` 十六进制串的分词分组）
+# 允许的 token 波动上限。它是**常数**、与正文体积无关；12 远超实测波动（本轮 3），
+# 又远低于「正文进了视图」时的万级量级。不要改回「按位数差推算」——那是错的模型。
+VOL_META_TOL = 12
 
 
 def tk(text):
@@ -272,7 +284,7 @@ def main():
     plan_local = sh("plan", "--root", corpus, "--work", cons_all)
     print(plan_local.rstrip())
     print()
-    print("--- 反例：任务要读完全部素材 ---")
+    print("--- 反例：任务需要反复用到全部素材（每次的工作集都接近全量）---")
     print(sh("plan", "--root", corpus, "--work", ",".join(FILES)).rstrip())
     print()
     print("注：plan **没有** --reuse 参数 —— 新口径下不需要预估复用次数 k，")
@@ -331,19 +343,29 @@ def main():
            stdin="T 内核\nP 实现\n")
         sh("event", "-f", lb, "--topic", "内核", "--purpose", "实现",
            "--src", path, "--summary", "内核原文")
-        views.append(tk(sh("read", "-f", lb)))
-    t1, t2 = views
+        views.append(sh("read", "-f", lb))
+    t1, t2 = tk(views[0]), tk(views[1])
     sz1, sz2 = os.path.getsize(big), os.path.getsize(small)
-    # 体积翻倍后视图允许的唯一变化：E 行 `bytes:<N>` 的数字位数从 5 位变 6 位（+1 字符）。
-    # 若正文真的进了视图，差值会是数万 token —— 所以这个上界仍有拦截力。
-    digit_delta = len(str(sz1)) - len(str(sz2))
     delta = t1 - t2
-    ok = delta <= digit_delta + 1
+    # 判据是「只有 E 行那一行不同 + 差值有界」，**不是**「差值 = bytes 位数差」。
+    # 后一个模型是错的，本轮实测把它打掉了：两个孪生文件内容不同 → `sha256:` 十六进制串的
+    # 分词分组不同（实测 `b4b97bfa…` 切 3 个 token、`21841ba5…` 切 6 个），差值**可正可负**，
+    # 与 bytes 位数没有关系；用位数差当上界会得到假 NO。两条新判据都机械可核：
+    #   ① 结构：两个视图**只有 1 行**不同，且那行是 E 行 —— 正文若进了视图，会是成千上万行不同；
+    #   ② 上界：|差值| ≤ VOL_META_TOL，且该上界只由 E 行的元数据字段决定，与正文体积无关。
+    lines_a, lines_b = views[0].splitlines(), views[1].splitlines()
+    diff_rows = [i for i, (x, y) in enumerate(zip(lines_a, lines_b)) if x != y]
+    same_shape = len(lines_a) == len(lines_b)
+    only_e_line = (same_shape and len(diff_rows) == 1
+                   and lines_a[diff_rows[0]].strip().startswith("E "))
+    ok = only_e_line and abs(delta) <= VOL_META_TOL
     print("正文体积：%d 字节(翻倍) vs %d 字节 → 差 %.0f%%" % (sz1, sz2, 100.0 * (sz1 - sz2) / sz2))
-    print("视图 token：%d vs %d → 差 %d（理论值 = bytes 字段位数差 %d）" % (t1, t2, delta, digit_delta))
+    print("视图差异行数：%d / 共 %d 行（必须恰好 1 行，且是 E 行）" % (len(diff_rows), len(lines_a)))
+    print("视图 token：%d vs %d → 差 %d（|差| 必须 ≤ %d）" % (t1, t2, delta, VOL_META_TOL))
     print("体积无关性成立 = %s" % ("YES" if ok else "NO!"))
     print("口径注：与**正文体积**无关（正文不进视图）；相关的只有节点数、摘要与指针的字符长度、")
-    print("        以及 bytes 字段的位数——最后这项是**对数级**的，是为可校验性付的必要代价。")
+    print("        以及 E 行元数据本身的分词 —— `bytes:` 位数与 `sha256:` 十六进制串的切分。")
+    print("        两项都是**常数级**的，且不确定方向；正文若真进视图，差值会是数万 token。")
 
     # —— 汇总 ——
     summary = {
@@ -356,6 +378,7 @@ def main():
         "event_nodes": len(FILES),
         "volume_invariance": ok,
         "volume_delta_token": delta,
+        "volume_diff_rows": len(diff_rows),
         "nav_layer_token_plan": nav_tok,
         "nav_note": "index_token=库的索引层(49 节点，粗粒度)；plan 的 I=%s 是对语料目录"
                     "现算的细粒度导航层(按每个结构单元)。索引做多细是取舍，不是定值。"

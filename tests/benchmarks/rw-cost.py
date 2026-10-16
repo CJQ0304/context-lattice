@@ -6,6 +6,13 @@
   * 「仅检索」不计（grep 命中不等于把文件读进窗口）
 再跑一次门控判定，看这个任务的工作集落在断点哪一侧。
 """
+
+# 控制台输出固定 UTF-8（实现唯一在 scripts/ctx.py，本行只是转发；见 tests/_console.py）
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+from _console import ensure_utf8 as _ensure_utf8
+_ensure_utf8()
+
 import os
 import shutil
 import subprocess

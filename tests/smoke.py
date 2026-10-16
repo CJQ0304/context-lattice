@@ -5,6 +5,13 @@
 自包含：先建一个演示库，再把每种视图/错误路径的结果打印出来，
 用来肉眼快速确认「脚本还活着、输出长什么样」。
 """
+
+# 控制台输出固定 UTF-8（实现唯一在 scripts/ctx.py，本行只是转发；见 tests/_console.py）
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from _console import ensure_utf8 as _ensure_utf8
+_ensure_utf8()
+
 import os
 import shutil
 import subprocess

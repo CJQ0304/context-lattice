@@ -10,6 +10,13 @@
 零第三方依赖：只用 Python 标准库。
 """
 
+# 控制台输出固定 UTF-8（实现唯一在 scripts/ctx.py，本行只是转发；见 tests/_console.py）
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from _console import ensure_utf8 as _ensure_utf8
+_ensure_utf8()
+
+
 import hashlib
 import json
 import os
@@ -1335,9 +1342,73 @@ def t_event_nodes():
 
 
 # ---------------------------------------------------------------------------
+# 套件 15 · 控制台流编码（管道 + 非 UTF-8 本地编码）
+# ---------------------------------------------------------------------------
+
+def _run_env(args, env_extra, stdin_bytes=None):
+    """与 run() 同形，但可覆盖环境变量，并用**字节**喂标准输入。
+
+    必须是字节而不是 str：本套件要测的正是「字节进、字节出」时编码怎么被解释；
+    若用 text=True，父进程会替子进程决定输入编码，恰好把要测的东西测没了。
+    """
+    env = dict(os.environ)
+    env.update(env_extra)
+    p = subprocess.run([PY, CTX] + args, input=stdin_bytes, capture_output=True, env=env)
+    return p.returncode, p.stdout, p.stderr
+
+
+def t_console_streams():
+    # 交付给用户看的输出**全是中文**。Windows 控制台下 Python 走 PEP 528 的 UTF-8 通道
+    # 本来没问题，但只要标准流接了管道或被重定向，编码就退回系统本地编码（英文版
+    # Windows = cp1252），于是输出侧 UnicodeEncodeError、输入侧静默读成乱码。
+    # CI 的 windows runner 正好是这个组合 —— 本套件把「管道 + 非 UTF-8 本地编码」钉死：
+    # 既要求命令不崩，也要求落库字节与默认环境**完全一致**（同一个输入不该因为换了台
+    # 机器就产出不同的库）。复现方式对环境无依赖：PYTHONIOENCODING 指定一个非 UTF-8 编码。
+    NON_UTF8 = {"PYTHONIOENCODING": "cp1252"}
+    DELTA = "T 品牌定位\nP 确定目标人群\nR 25-35 岁新中产\n".encode("utf-8")
+
+    # ① 输入侧：非 UTF-8 本地编码下 --stdin 必须照常建库，且字节与默认环境一致
+    a = fresh("console_default")
+    b = fresh("console_cp1252")
+    rc, _o, err = _run_env(["init", "-f", a, "--date", "2026-10-16", "--stdin"], {}, DELTA)
+    check(rc == 0, "默认环境下 --stdin 建库应成功：%s" % err.decode("utf-8", "replace").strip())
+    rc, _o, err = _run_env(["init", "-f", b, "--date", "2026-10-16", "--stdin"], NON_UTF8, DELTA)
+    etxt = err.decode("utf-8", "replace")
+    check(rc == 0, "非 UTF-8 本地编码下 --stdin 建库不得失败（实测 rc=%d %s）"
+                   % (rc, etxt.strip()[:160]))
+    check(not os.path.exists(b) or "\ufffd" not in _read(b),
+          "非 UTF-8 环境不得把输入解成替换字符 U+FFFD 后静默落库")
+    check(os.path.exists(a) and os.path.exists(b) and sha(a) == sha(b),
+          "同一份 UTF-8 增量在不同本地编码环境下必须产出**字节一致**的库")
+
+    # ② 输出侧：非 UTF-8 本地编码下 read / plan 必须照常输出，且能按 UTF-8 读回中文
+    for args, must in ((["read", "-f", b], "确定目标人群"),
+                       (["plan", "--break-even"], "断点")):
+        rc, out, err = _run_env(args, NON_UTF8)
+        o = out.decode("utf-8", "replace")
+        e = err.decode("utf-8", "replace")
+        check(rc == 0, "非 UTF-8 本地编码下 `%s` 不得失败（实测 rc=%d %s）"
+                       % (" ".join(args), rc, e.strip()[:160]))
+        check("UnicodeEncodeError" not in o and "UnicodeDecodeError" not in o + e,
+              "`%s` 不得把编解码错误当结果输出：%s" % (" ".join(args), (o + e).strip()[:160]))
+        check(must in o, "`%s` 的输出必须能在 UTF-8 下读回中文（找 %r）"
+                         % (" ".join(args), must))
+
+    # ③ 确实不是 UTF-8 的输入：必须报错、必须点名真实原因、且**不得落库**。
+    #    静默解成乱码写进库比报错坏得多 —— 那是事后查不出来的数据损坏。
+    c = fresh("console_gbk")
+    rc, _o, err = _run_env(["init", "-f", c, "--date", "2026-10-16", "--stdin"], {},
+                           "T 品牌定位\n".encode("gbk"))
+    e = err.decode("utf-8", "replace")
+    check(rc != 0, "非 UTF-8 输入必须报错，不得静默读成乱码")
+    check(not os.path.exists(c), "输入解不出来时不得落库")
+    check("UTF-8" in e, "报错要点名真实原因（UTF-8），实测：%s" % e.strip()[:140])
+
+
+# ---------------------------------------------------------------------------
 
 # 套件清单 —— **唯一真相**。
-# 报告里引用的「14 套件 / N 断言」全部由它派生，不另设 @suite 装饰器：
+# 报告里引用的「15 套件 / N 断言」全部由它派生，不另设 @suite 装饰器：
 # 曾经的写法是「装饰器登记 + main() 里再列一份」，于是同一批套件有了两套名字
 # （已经分叉）、而且漏加装饰器时**计数静默少 1**（第 14 套件就是这么漏的）。
 SUITES = [
@@ -1355,6 +1426,7 @@ SUITES = [
     (t_behavior_scorers, "12 · 行为层评分器（正负夹具）"),
     (t_event_nodes, "13 · 事件节点与门控"),
     (t_refs, "14 · 交付包自洽（无悬空引用）"),
+    (t_console_streams, "15 · 控制台流编码（管道 + 非 UTF-8 本地编码）"),
 ]
 
 # 断言数、失败数、套件数一律从**实际执行**记账：套件数不再由声明决定。
